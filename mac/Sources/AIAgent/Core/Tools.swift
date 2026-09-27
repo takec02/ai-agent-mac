@@ -78,6 +78,20 @@ enum Tools {
                  description: "登録した資料（PDF・Word・PowerPoint・Excel・テキストなど）の中から、質問に関係する箇所を探す。資料の内容について聞かれたら、答える前に必ずこれを使う。query は探したい言葉",
                  properties: ["query": ["type": "string"]]),
         ToolSpec(name: "list_documents", description: "登録されている資料の一覧を返す", properties: [:]),
+        ToolSpec(name: "find_contact",
+                 description: "Mac の連絡先から人を探して、電話番号・メール・誕生日・会社を返す。「〇〇さんの電話番号は？」「〇〇さんのメアド教えて」と聞かれたら使う。query は名前や会社名の一部",
+                 properties: ["query": ["type": "string"]]),
+        ToolSpec(name: "upcoming_birthdays",
+                 description: "これから誕生日を迎える人を調べる。days は何日先まで見るか（今日だけなら 0、今週なら 7）",
+                 properties: ["days": ["type": "integer", "minimum": 0, "maximum": 365]]),
+        ToolSpec(name: "save_contact",
+                 description: "Mac の連絡先に新しい人を登録する。名刺を読み取ったあとに使う。phone と email は複数ある場合カンマ区切り。登録前に確認が出る",
+                 properties: ["family_name": ["type": "string"], "given_name": ["type": "string"],
+                              "organization": ["type": "string"], "job_title": ["type": "string"],
+                              "phone": ["type": "string"], "email": ["type": "string"], "note": ["type": "string"]]),
+        ToolSpec(name: "import_contacts",
+                 description: "名刺アプリ（Eight など）から書き出した CSV を読み込んで、Mac の連絡先にまとめて登録する。file は CSV のパス。資料として登録した CSV があれば、その名前でもよい。登録前に件数を確認する",
+                 properties: ["file": ["type": "string"]]),
         ToolSpec(name: "look_image", description: "ユーザーが渡した画像（ドラッグや「画像を渡す」で添付されたもの）を見る。添付があると伝えられたら、これを呼んでから答える",
                  properties: [:]),
         ToolSpec(name: "open_url", description: "Web ページ（http/https の URL）をブラウザで開く。QR コードの URL を開くときなど。開く前にユーザーに確認する",
@@ -230,6 +244,49 @@ enum Tools {
             let sources = Library.shared.sources
             guard !sources.isEmpty else { return "資料はまだ登録されていません" }
             return "登録されている資料 \(sources.count)件:\n" + sources.map { "・\($0.name)" }.joined(separator: "\n")
+        case "find_contact":
+            return try await ContactsBook.find(args["query"] as! String)
+        case "upcoming_birthdays":
+            return try await ContactsBook.birthdays(within: args["days"] as! Int)
+        case "save_contact":
+            func text(_ key: String) -> String { (args[key] as? String ?? "").trimmingCharacters(in: .whitespaces) }
+            var new = ContactsBook.NewContact()
+            new.familyName = text("family_name")
+            new.givenName = text("given_name")
+            new.organization = text("organization")
+            new.jobTitle = text("job_title")
+            new.phones = text("phone").split(whereSeparator: { ",、，".contains($0) }).map { $0.trimmingCharacters(in: .whitespaces) }
+            new.emails = text("email").split(whereSeparator: { ",、，".contains($0) }).map { $0.trimmingCharacters(in: .whitespaces) }
+            new.note = text("note")
+            guard !(new.familyName + new.givenName + new.organization).isEmpty else {
+                throw ToolError(message: "名前か会社名が必要です")
+            }
+            var summary = ["Mac の連絡先に登録します",
+                           "名前: \([new.familyName, new.givenName].filter { !$0.isEmpty }.joined(separator: " "))"]
+            if !new.organization.isEmpty { summary.append("会社: \(new.organization)\(new.jobTitle.isEmpty ? "" : " / \(new.jobTitle)")") }
+            if !new.phones.isEmpty { summary.append("電話: \(new.phones.joined(separator: "、"))") }
+            if !new.emails.isEmpty { summary.append("メール: \(new.emails.joined(separator: "、"))") }
+            guard await AgentController.shared.confirm(summary.joined(separator: "\n") + "\nよろしいですか？") else {
+                return "ユーザーが取りやめました。登録していません"
+            }
+            return try await ContactsBook.save(new)
+        case "import_contacts":
+            let given = (args["file"] as! String).trimmingCharacters(in: .whitespaces)
+            // 資料に登録済みの CSV なら、その名前でも受け付ける
+            let path = FileManager.default.fileExists(atPath: given) ? given
+                : Library.shared.sources.first { $0.name.localizedCaseInsensitiveContains(given) }?.path ?? given
+            let url = URL(fileURLWithPath: (path as NSString).expandingTildeInPath)
+            guard FileManager.default.fileExists(atPath: url.path) else {
+                throw ToolError(message: "\(given) が見つかりません。CSV のパスか、資料に登録した名前を教えてください")
+            }
+            let text = (try? String(contentsOf: url, encoding: .utf8)) ?? (try? String(contentsOf: url, encoding: .shiftJIS)) ?? ""
+            let people = ContactsBook.parseCSV(text)
+            guard !people.isEmpty else { throw ToolError(message: "CSV から連絡先を見つけられませんでした") }
+            let names = people.prefix(3).map { [$0.familyName, $0.givenName].filter { !$0.isEmpty }.joined(separator: " ") }
+            guard await AgentController.shared.confirm("Mac の連絡先に \(people.count)件を登録します\n例: \(names.joined(separator: "、"))\nよろしいですか？") else {
+                return "ユーザーが取りやめました。登録していません"
+            }
+            return try await ContactsBook.importCSV(at: url)
         case "look_image":
             guard Camera.shared.lastPhoto != nil else { return "渡された画像がありません" }
             Camera.shared.attachmentUsed()

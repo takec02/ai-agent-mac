@@ -18,6 +18,7 @@
   <key>NSMicrophoneUsageDescription</key><string>呼びかけと話しかけた内容を聞き取るためにマイクを使います。音声は Mac の中で文字に変換されます。</string>
   <key>NSSpeechRecognitionUsageDescription</key><string>話しかけた内容を Mac の中で文字に変換するために使います。</string>
   <key>NSAudioCaptureUsageDescription</key><string>会議の記録中に、会議アプリなど Mac で鳴っている音声を文字に起こすために使います。音声は Mac の中で文字に変換されます。</string>
+  <key>NSContactsUsageDescription</key><string>「〇〇さんの電話番号は？」に答えたり、名刺から読み取った人を登録したりするために使います。登録するときは必ず確認します。</string>
   <key>NSCameraUsageDescription</key><string>「これ何？」「これ読んで」と頼まれたときに、カメラで1枚撮って見るために使います。文字と QR コードは Mac の中で読み取ります。</string>
   <key>NSAppleEventsUsageDescription</key><string>ミュージックの再生操作など、Mac のアプリを操作するために使います。</string>
 </dict>

@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 import Translation
 import Speech
+import Contacts
 import UserNotifications
 
 @main
@@ -209,6 +210,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                                  ("ブエノス ディアス", "Buenos días, ¿cómo estás?")] {
                     let picked = Interpreter.pick(japanese: ja, foreign: fo)
                     print("日本語側「\(ja)」/ 相手側「\(fo)」→ \(picked.map { ($0.isJapanese ? "日本語: " : "相手: ") + $0.text } ?? "なし")")
+                }
+                exit(0)
+            }
+            return
+        }
+        // 動作確認用: `AIAgent --csv-selftest <CSV>` で、CSV の読み取りを試す（連絡先には登録しない）
+        if let i = args.firstIndex(of: "--csv-selftest"), args.count > i + 1 {
+            let text = (try? String(contentsOf: URL(fileURLWithPath: args[i + 1]), encoding: .utf8)) ?? ""
+            let people = ContactsBook.parseCSV(text)
+            print("読み取れた件数: \(people.count)")
+            for p in people {
+                print("・姓[\(p.familyName)] 名[\(p.givenName)] 会社[\(p.organization)] 役職[\(p.jobTitle)] 電話\(p.phones) メール\(p.emails) メモ[\(p.note)]")
+            }
+            exit(0)
+        }
+        // 動作確認用: `AIAgent --contacts-selftest [探す言葉]` で、連絡先の読み取りを試す（登録はしない）
+        if let i = args.firstIndex(of: "--contacts-selftest") {
+            Task { @MainActor in
+                print("今の許可の状態: \(CNContactStore.authorizationStatus(for: .contacts).rawValue)（0=未決定 1=制限 2=拒否 3=許可 4=一部のみ）")
+                // 通常の起動（open -a）から試せるように、結果はログにも残す
+                Log.write("contacts-selftest: 許可の状態 \(CNContactStore.authorizationStatus(for: .contacts).rawValue)（0=未決定 1=制限 2=拒否 3=許可 4=一部のみ）")
+                do {
+                    let query = args.count > i + 1 && !args[i + 1].hasPrefix("--") ? args[i + 1] : ""
+                    if !query.isEmpty {
+                        let found = try await ContactsBook.find(query)
+                        Log.write("contacts-selftest: 『\(query)』→ \(found.replacingOccurrences(of: "\n", with: " / ").prefix(200))")
+                    }
+                    let birthdays = try await ContactsBook.birthdays(within: 30)
+                    Log.write("contacts-selftest: 30日以内の誕生日 → \(birthdays.replacingOccurrences(of: "\n", with: " / ").prefix(200))")
+                } catch {
+                    Log.write("contacts-selftest: error \(error.localizedDescription)")
                 }
                 exit(0)
             }
