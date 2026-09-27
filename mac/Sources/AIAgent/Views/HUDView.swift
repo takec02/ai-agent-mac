@@ -481,17 +481,17 @@ struct HUDView: View {
             }
             HUDButton(symbol: "globe", tint: tint,
                       help: agent.interpreting ? "通訳をやめる" : "通訳する（日本語 ⇄ \(Interpreter.label(for: agent.settings.interpreterLanguage))）",
-                      active: agent.interpreting) {
+                      active: agent.interpreting, onHover: { hoveredLabel = $0 }) {
                 agent.toggleInterpreting()
             }
-            HUDButton(symbol: "photo", tint: tint, help: "画像を渡して見てもらう") { pickImage() }
-            HUDButton(symbol: "trash", tint: tint, help: "会話を消去して、呼びかけ待ちに戻る") { agent.clearConversation() }
+            HUDButton(symbol: "photo", tint: tint, help: "画像を渡して見てもらう", onHover: { hoveredLabel = $0 }) { pickImage() }
+            HUDButton(symbol: "trash", tint: tint, help: "会話を消去して、呼びかけ待ちに戻る", onHover: { hoveredLabel = $0 }) { agent.clearConversation() }
             HUDButton(symbol: "gearshape", tint: tint, help: "設定", onHover: { hoveredLabel = $0 }) {
                 NSApp.activate()
                 openSettings()
             }
             if compact {
-                HUDButton(symbol: "power", tint: tint, help: "終了") { NSApp.terminate(nil) }
+                HUDButton(symbol: "power", tint: tint, help: "終了", onHover: { hoveredLabel = $0 }) { NSApp.terminate(nil) }
             }
         }
         .padding(.vertical, 12)
