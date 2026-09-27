@@ -245,6 +245,8 @@ struct HUDView: View {
     @Environment(AgentController.self) private var agent
     @Environment(\.openSettings) private var openSettings
     @Environment(\.openWindow) private var openWindow
+    /// カーソルを合わせているボタンの説明（すぐ出す）
+    @State private var hoveredLabel: String?
     @State private var showInput = false
     @State private var input = ""
     @FocusState private var inputFocused: Bool
@@ -422,12 +424,24 @@ struct HUDView: View {
     }
 
     private func controls(tint: Color) -> some View {
+        VStack(spacing: 4) {
+            // カーソルを合わせたボタンが何なのかを、すぐ分かるように出す
+            Text(hoveredLabel ?? " ")
+                .font(.system(size: 11))
+                .foregroundStyle(tint.opacity(hoveredLabel == nil ? 0 : 0.9))
+                .animation(.easeOut(duration: 0.12), value: hoveredLabel)
+            controlRow(tint: tint)
+        }
+    }
+
+    @ViewBuilder
+    private func controlRow(tint: Color) -> some View {
         @Bindable var s = agent.settings
-        return HStack(spacing: 14) {
-            HUDButton(symbol: agent.isPaused ? "mic.slash" : "mic", tint: tint, help: agent.isPaused ? "マイクを再開" : "マイクを一時停止") {
+        HStack(spacing: 14) {
+            HUDButton(symbol: agent.isPaused ? "mic.slash" : "mic", tint: tint, help: agent.isPaused ? "マイクを再開" : "マイクを一時停止", onHover: { hoveredLabel = $0 }) {
                 agent.toggleMicrophone()
             }
-            HUDButton(symbol: "keyboard", tint: tint, help: "文字で話しかける", active: showInput) {
+            HUDButton(symbol: "keyboard", tint: tint, help: "文字で話しかける", active: showInput, onHover: { hoveredLabel = $0 }) {
                 withAnimation(.easeOut(duration: 0.2)) { showInput.toggle() }
             }
             Menu {
@@ -448,20 +462,20 @@ struct HUDView: View {
             .fixedSize()
             .help("AI を切り替え")
             HUDButton(symbol: agent.meeting.isRecording ? "stop.circle.fill" : "record.circle", tint: agent.meeting.isRecording ? .red : tint,
-                      help: agent.meeting.isRecording ? "会議の記録を終了して要約" : "会議を記録", active: agent.meeting.isRecording) {
+                      help: agent.meeting.isRecording ? "会議の記録を終了して要約" : "会議を記録", active: agent.meeting.isRecording, onHover: { hoveredLabel = $0 }) {
                 agent.toggleMeeting()
             }
-            HUDButton(symbol: "books.vertical", tint: tint, help: "資料を登録する（その内容について聞けます）") {
+            HUDButton(symbol: "books.vertical", tint: tint, help: "資料を登録する（その内容について聞けます）", onHover: { hoveredLabel = $0 }) {
                 NSApp.activate()
                 openWindow(id: "library")
             }
-            HUDButton(symbol: "doc.text", tint: tint, help: "議事録を読む") {
+            HUDButton(symbol: "doc.text", tint: tint, help: "議事録を読む", onHover: { hoveredLabel = $0 }) {
                 NSApp.activate()
                 openWindow(id: "notes")
             }
             HUDButton(symbol: "captions.bubble", tint: tint,
                       help: Subtitles.shared.running ? "字幕をやめる" : "会議・動画に日本語字幕を出す",
-                      active: Subtitles.shared.running) {
+                      active: Subtitles.shared.running, onHover: { hoveredLabel = $0 }) {
                 agent.toggleSubtitles()
             }
             HUDButton(symbol: "globe", tint: tint,
@@ -471,7 +485,7 @@ struct HUDView: View {
             }
             HUDButton(symbol: "photo", tint: tint, help: "画像を渡して見てもらう") { pickImage() }
             HUDButton(symbol: "trash", tint: tint, help: "会話を消去して、呼びかけ待ちに戻る") { agent.clearConversation() }
-            HUDButton(symbol: "gearshape", tint: tint, help: "設定") {
+            HUDButton(symbol: "gearshape", tint: tint, help: "設定", onHover: { hoveredLabel = $0 }) {
                 NSApp.activate()
                 openSettings()
             }
@@ -495,6 +509,7 @@ private struct HUDButton: View {
     let tint: Color
     let help: String
     var active = false
+    var onHover: ((String?) -> Void)?
     let action: () -> Void
 
     var body: some View {
@@ -508,5 +523,6 @@ private struct HUDButton: View {
         }
         .buttonStyle(.plain)
         .help(help)
+        .onHover { inside in onHover?(inside ? help : nil) }
     }
 }

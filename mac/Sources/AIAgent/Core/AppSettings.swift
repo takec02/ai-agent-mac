@@ -97,7 +97,7 @@ final class AppSettings {
     /// ユーザーが自由に書ける指示（毎回の指示文に入れる）
     var personalPrompt: String { didSet { d.set(personalPrompt, forKey: "personalPrompt") } }
 
-    /// 静かな時間帯（この間は見張りが声を出さず、通知だけにする）
+    /// 静かな時間帯（この間は定期実行が声を出さず、通知だけにする）
     var quietFromHour: Int { didSet { d.set(quietFromHour, forKey: "quietFromHour") } }
     var quietToHour: Int { didSet { d.set(quietToHour, forKey: "quietToHour") } }
 

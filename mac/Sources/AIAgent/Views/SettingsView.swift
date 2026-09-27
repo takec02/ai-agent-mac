@@ -8,7 +8,7 @@ struct SettingsView: View {
             GeneralSettings().tabItem { Label("一般", systemImage: "person.crop.circle") }
             AISettings().tabItem { Label("AI", systemImage: "brain") }
             VoiceSettings().tabItem { Label("声", systemImage: "speaker.wave.2") }
-            WatchSettings().tabItem { Label("お知らせ", systemImage: "bell") }
+            ScheduleSettings().tabItem { Label("定期実行", systemImage: "clock.badge.checkmark") }
             MemorySettings().tabItem { Label("記憶", systemImage: "brain.head.profile") }
             InterpreterSettings().tabItem { Label("通訳", systemImage: "globe") }
             CalendarSettings().tabItem { Label("予定", systemImage: "calendar") }
@@ -299,25 +299,25 @@ private struct VoiceSettings: View {
 
 // MARK: お知らせ（自分から確かめて知らせる）
 
-private struct WatchSettings: View {
+private struct ScheduleSettings: View {
     @Environment(AgentController.self) private var agent
-    @State private var editing: WatchRule?
+    @State private var editing: ScheduledTask?
 
     var body: some View {
         @Bindable var s = agent.settings
         Form {
-            Section("見張り") {
-                if agent.watcher.rules.isEmpty {
+            Section("定期実行") {
+                if agent.scheduler.rules.isEmpty {
                     Text("まだ何もありません。「追加」で作れます。").foregroundStyle(.secondary)
                 }
-                ForEach(agent.watcher.rules) { rule in
+                ForEach(agent.scheduler.rules) { rule in
                     HStack {
                         Toggle("", isOn: Binding(
                             get: { rule.enabled },
                             set: { on in
                                 var r = rule
                                 r.enabled = on
-                                agent.watcher.update(r)
+                                agent.scheduler.update(r)
                             })).labelsHidden()
                         VStack(alignment: .leading, spacing: 2) {
                             Text(rule.name)
@@ -326,12 +326,12 @@ private struct WatchSettings: View {
                         }
                         Spacer()
                         Button("編集") { editing = rule }
-                        Button(role: .destructive) { agent.watcher.remove(rule) } label: { Image(systemName: "trash") }
+                        Button(role: .destructive) { agent.scheduler.remove(rule) } label: { Image(systemName: "trash") }
                             .buttonStyle(.borderless)
                     }
                 }
-                Button("追加") { editing = agent.watcher.addNew() }
-                Text("決めた時刻や間隔で、頼んだことを\(agent.settings.agentName)が自分で確かめます。知らせることが無ければ黙ります。話している最中や会議の記録中は行いません。")
+                Button("追加") { editing = agent.scheduler.addNew() }
+                Text("決めた時刻や間隔で、頼んだことを\(agent.settings.agentName)が自分で実行します。知らせることが無ければ黙ります。話している最中や会議の記録中は行いません。")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("静かな時間") {
@@ -345,19 +345,19 @@ private struct WatchSettings: View {
         }
         .formStyle(.grouped)
         .textFieldStyle(.roundedBorder)
-        .sheet(item: $editing) { rule in WatchRuleSheet(rule: rule) { agent.watcher.update($0) } }
+        .sheet(item: $editing) { rule in ScheduledTaskSheet(rule: rule) { agent.scheduler.update($0) } }
     }
 }
 
-private struct WatchRuleSheet: View {
+private struct ScheduledTaskSheet: View {
     enum Timing: Hashable { case daily, monthly, interval }
 
-    @State var rule: WatchRule
-    let onSave: (WatchRule) -> Void
+    @State var rule: ScheduledTask
+    let onSave: (ScheduledTask) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var timing: Timing
 
-    init(rule: WatchRule, onSave: @escaping (WatchRule) -> Void) {
+    init(rule: ScheduledTask, onSave: @escaping (ScheduledTask) -> Void) {
         _rule = State(initialValue: rule)
         _timing = State(initialValue: rule.everyMinutes != nil ? .interval : (rule.dayOfMonth != nil ? .monthly : .daily))
         self.onSave = onSave
@@ -365,9 +365,9 @@ private struct WatchRuleSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("見張りの設定").font(.headline)
+            Text("定期実行の設定").font(.headline)
             Form {
-                TextField("名前", text: $rule.name, prompt: Text("例: 朝の読み上げ"))
+                TextField("名前", text: $rule.name, prompt: Text("例: 朝の読み上げ、勤務表の確認"))
                 Picker("いつ", selection: $timing) {
                     Text("毎日 決まった時刻").tag(Timing.daily)
                     Text("毎月 決まった日").tag(Timing.monthly)

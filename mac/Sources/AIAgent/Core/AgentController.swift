@@ -74,7 +74,7 @@ final class AgentController {
     let meeting = MeetingRecorder()
 
     /// 決まった時刻・間隔で自分から確かめて知らせる
-    @ObservationIgnored private(set) lazy var watcher = Watcher(agent: self)
+    @ObservationIgnored private(set) lazy var scheduler = Scheduler(agent: self)
 
     private var history: [ChatMessage] = []
     private let listener = SpeechListener()
@@ -135,7 +135,7 @@ final class AgentController {
             }
             Log.write("listening started. wake words: \(settings.wakeWords)")
             Notifier.requestPermission()
-            watcher.start()
+            scheduler.start()
             state = .idle
             await speakAndWait("\(settings.agentName)、起動しました。")
             setIdle()
@@ -170,9 +170,9 @@ final class AgentController {
     var isPaused: Bool { userPaused }
 
     /// 会話を消して、呼びかけ待ちに戻す（次は名前を呼ばないと反応しない）
-    // MARK: 自分から確かめる（見張り）
+    // MARK: 定期実行
 
-    /// 画面や声に出さずに AI に1回聞いて、答えの文だけを返す（見張りが使う）
+    /// 画面や声に出さずに AI に1回聞いて、答えの文だけを返す（定期実行が使う）
     func askQuietly(_ instruction: String) async -> String {
         guard let backend = try? makeBackend(settings.backend, settings: settings) else { return "" }
         _ = MCPManager.shared.consumeLocalOnlyUsage()
@@ -187,8 +187,8 @@ final class AgentController {
         return full
     }
 
-    /// 見張りが見つけたことを知らせる（静かな時間帯は声を出さず、通知だけにする）
-    func deliver(_ text: String, from rule: WatchRule) {
+    /// 定期実行で見つけたことを知らせる（静かな時間帯は声を出さず、通知だけにする）
+    func deliver(_ text: String, from rule: ScheduledTask) {
         entries.append(ConversationEntry(role: "assistant", text: "🔔 \(rule.name)\n\(text)"))
         ChatLog.append(role: "assistant", name: "\(settings.agentName)（\(rule.name)）", text: text)
         if rule.notify { Notifier.show(title: "\(settings.agentName)（\(rule.name)）", body: text) }

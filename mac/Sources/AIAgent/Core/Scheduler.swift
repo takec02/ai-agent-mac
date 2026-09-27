@@ -2,9 +2,9 @@ import AppKit
 import Foundation
 import UserNotifications
 
-/// 決まった時刻や間隔で、頼まれたことを自分で確かめ、知らせることがあるときだけ声をかける。
+/// 決まった時刻や間隔で、頼まれたことを自分で実行し、知らせることがあるときだけ声をかける。
 /// 何も無ければ黙る（「なし」とだけ答えさせて、その場合は表示も読み上げもしない）
-struct WatchRule: Codable, Identifiable, Equatable {
+struct ScheduledTask: Codable, Identifiable, Equatable {
     var id = UUID()
     var name = ""
     var enabled = false
@@ -28,21 +28,21 @@ struct WatchRule: Codable, Identifiable, Equatable {
         return String(format: "毎日 %d:%02d", hour, minute)
     }
 
-    /// 既定で用意しておく決まり（どれも最初はオフ。使うものだけオンにする）
-    static let samples: [WatchRule] = [
-        WatchRule(name: "朝の読み上げ", hour: 8, minute: 0,
+    /// 既定で用意しておく例（どれも最初はオフ。使うものだけオンにする）
+    static let samples: [ScheduledTask] = [
+        ScheduledTask(name: "朝の読み上げ", hour: 8, minute: 0,
                   prompt: "今日の日付、今日の予定、今日の天気（現在地の都道府県）を調べて、40秒くらいで読み上げる文章にまとめて。予定が無ければ「予定はありません」と言う。"),
-        WatchRule(name: "新着メールの確認", everyMinutes: 30,
+        ScheduledTask(name: "新着メールの確認", everyMinutes: 30,
                   prompt: "未読のメールを確認して、すぐ返事が要るものだけを3件まで、差出人と用件を一言で挙げて。急ぎのものが無ければ、何も言わず静かにしている。"),
-        WatchRule(name: "次の予定の知らせ", everyMinutes: 15,
+        ScheduledTask(name: "次の予定の知らせ", everyMinutes: 15,
                   prompt: "これから30分以内に始まる予定があれば、開始時刻と件名を伝えて。無ければ、何も言わず静かにしている。"),
     ]
 }
 
 @MainActor
 @Observable
-final class Watcher {
-    private(set) var rules: [WatchRule] = []
+final class Scheduler {
+    private(set) var rules: [ScheduledTask] = []
     private var timer: Timer?
     private var running = false
     private unowned let agent: AgentController
@@ -52,13 +52,13 @@ final class Watcher {
         rules = Self.load()
     }
 
-    // MARK: 決まりの保存
+    // MARK: 保存
 
     private static let key = "watchRules"
 
-    private static func load() -> [WatchRule] {
+    private static func load() -> [ScheduledTask] {
         guard let data = UserDefaults.standard.data(forKey: key),
-              let saved = try? JSONDecoder().decode([WatchRule].self, from: data) else { return WatchRule.samples }
+              let saved = try? JSONDecoder().decode([ScheduledTask].self, from: data) else { return ScheduledTask.samples }
         // 以前の言い回し（「なし」とだけ答える）を、今の言い方に直す
         return saved.map { rule in
             var r = rule
@@ -71,18 +71,18 @@ final class Watcher {
         if let data = try? JSONEncoder().encode(rules) { UserDefaults.standard.set(data, forKey: Self.key) }
     }
 
-    func update(_ rule: WatchRule) {
+    func update(_ rule: ScheduledTask) {
         if let i = rules.firstIndex(where: { $0.id == rule.id }) { rules[i] = rule } else { rules.append(rule) }
         save()
     }
 
-    func remove(_ rule: WatchRule) {
+    func remove(_ rule: ScheduledTask) {
         rules.removeAll { $0.id == rule.id }
         save()
     }
 
-    func addNew() -> WatchRule {
-        let rule = WatchRule(name: "新しい見張り", everyMinutes: 60, prompt: "")
+    func addNew() -> ScheduledTask {
+        let rule = ScheduledTask(name: "新しい定期実行", everyMinutes: 60, prompt: "")
         rules.append(rule)
         save()
         return rule
@@ -109,8 +109,8 @@ final class Watcher {
         Task { await run(rule) }
     }
 
-    /// 今この決まりを実行すべきか
-    func isDue(_ rule: WatchRule, now: Date) -> Bool {
+    /// 今これを実行すべきか
+    func isDue(_ rule: ScheduledTask, now: Date) -> Bool {
         guard rule.enabled, !rule.prompt.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
         let cal = Calendar.current
         if let minutes = rule.everyMinutes {
@@ -129,7 +129,7 @@ final class Watcher {
         return last < today
     }
 
-    private func run(_ rule: WatchRule) async {
+    private func run(_ rule: ScheduledTask) async {
         running = true
         defer { running = false }
         var updated = rule
@@ -138,7 +138,7 @@ final class Watcher {
         Log.write("watch run: \(rule.name)")
 
         let instruction = """
-        これは利用者に頼まれていない、あなたからの定期確認です。
+        これは利用者に頼まれていない、決まった時刻の自動実行です。
         次のことを確かめてください: \(rule.prompt)
         知らせる必要がなければ、説明や前置きを付けず「なし」の一語だけを返してください（この一語は読み上げられません）。
         知らせることがあるときは、話し言葉で簡潔に伝えてください。
