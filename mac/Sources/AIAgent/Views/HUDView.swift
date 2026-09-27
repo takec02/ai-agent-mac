@@ -461,6 +461,7 @@ struct HUDView: View {
             .menuIndicator(.hidden)
             .fixedSize()
             .help("AI を切り替え")
+            .onHover { inside in hoveredLabel = inside ? "AI を切り替え（今は\(s.backend.label)）" : nil }
             HUDButton(symbol: agent.meeting.isRecording ? "stop.circle.fill" : "record.circle", tint: agent.meeting.isRecording ? .red : tint,
                       help: agent.meeting.isRecording ? "会議の記録を終了して要約" : "会議を記録", active: agent.meeting.isRecording, onHover: { hoveredLabel = $0 }) {
                 agent.toggleMeeting()
