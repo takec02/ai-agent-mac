@@ -40,10 +40,19 @@ struct HistoryView: View {
                 Divider()
                 ScrollView {
                     if hits.isEmpty {
-                        Text(attributed)
-                            .textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(16)
+                        VStack(alignment: .leading, spacing: 8) {
+                            ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
+                                if line.hasPrefix("# ") {
+                                    Text(line.dropFirst(2)).font(.title3.weight(.semibold))
+                                } else {
+                                    Text(speech(line))
+                                        .textSelection(.enabled)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(16)
                     } else {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("「\(query)」を含む発言 \(hits.count)件")
@@ -65,8 +74,21 @@ struct HistoryView: View {
         .task { reload() }
     }
 
-    private var attributed: AttributedString {
-        (try? AttributedString(markdown: body_, options: .init(interpretedSyntax: .full))) ?? AttributedString(body_)
+    /// 記録の行（空行は詰める）
+    private var lines: [String] {
+        body_.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+    }
+
+    /// 「- **10:30 あなた**: 〜」を、読みやすい1行にする
+    private func speech(_ line: String) -> AttributedString {
+        var text = line.trimmingCharacters(in: .whitespaces)
+        if text.hasPrefix("-") { text = String(text.dropFirst()).trimmingCharacters(in: .whitespaces) }
+        var result = AttributedString(text.replacingOccurrences(of: "**", with: ""))
+        // 話し手の部分（「10:30 あなた:」まで）を目立たせる
+        if let colon = result.range(of: ":") {
+            result[result.startIndex..<colon.upperBound].font = .body.weight(.semibold)
+        }
+        return result
     }
 
     private func reload() {

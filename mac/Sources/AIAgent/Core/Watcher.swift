@@ -36,8 +36,6 @@ struct WatchRule: Codable, Identifiable, Equatable {
                   prompt: "未読のメールを確認して、すぐ返事が要るものだけを3件まで、差出人と用件を一言で挙げて。急ぎのものが無ければ、何も言わず静かにしている。"),
         WatchRule(name: "次の予定の知らせ", everyMinutes: 15,
                   prompt: "これから30分以内に始まる予定があれば、開始時刻と件名を伝えて。無ければ、何も言わず静かにしている。"),
-        WatchRule(name: "提出物の締切前の確認", hour: 10, minute: 0, dayOfMonth: 25,
-                  prompt: "check_submissions ツールで、今月の提出状況を調べて。未提出の人がいれば名前を挙げて。全員そろっていれば、何も言わず静かにしている。"),
     ]
 }
 

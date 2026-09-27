@@ -78,9 +78,6 @@ enum Tools {
                  description: "登録した資料（PDF・Word・PowerPoint・Excel・テキストなど）の中から、質問に関係する箇所を探す。資料の内容について聞かれたら、答える前に必ずこれを使う。query は探したい言葉",
                  properties: ["query": ["type": "string"]]),
         ToolSpec(name: "list_documents", description: "登録されている資料の一覧を返す", properties: [:]),
-        ToolSpec(name: "check_submissions",
-                 description: "Google ドライブのフォルダの中身と名簿を突き合わせ、まだ出していない人（案件）を調べる。folder はフォルダの URL か ID（省略すると設定の親フォルダの中の今月のフォルダ）。「未提出は誰？」「勤務表そろってる？」と聞かれたら使う",
-                 properties: ["folder": ["type": "string"]]),
         ToolSpec(name: "look_image", description: "ユーザーが渡した画像（ドラッグや「画像を渡す」で添付されたもの）を見る。添付があると伝えられたら、これを呼んでから答える",
                  properties: [:]),
         ToolSpec(name: "open_url", description: "Web ページ（http/https の URL）をブラウザで開く。QR コードの URL を開くときなど。開く前にユーザーに確認する",
@@ -233,12 +230,6 @@ enum Tools {
             let sources = Library.shared.sources
             guard !sources.isEmpty else { return "資料はまだ登録されていません" }
             return "登録されている資料 \(sources.count)件:\n" + sources.map { "・\($0.name)" }.joined(separator: "\n")
-        case "check_submissions":
-            let folder = (args["folder"] as? String ?? "").trimmingCharacters(in: .whitespaces)
-            let settings = AppSettings.shared
-            let target = folder.isEmpty ? settings.submissionParentFolder : folder
-            guard !target.isEmpty else { throw ToolError(message: "調べるフォルダが決まっていません（設定 → 予定 で親フォルダを登録してください）") }
-            return try await Submissions.check(folder: target, sheet: settings.rosterSheet, range: settings.rosterRange)
         case "look_image":
             guard Camera.shared.lastPhoto != nil else { return "渡された画像がありません" }
             Camera.shared.attachmentUsed()

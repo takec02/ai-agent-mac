@@ -593,22 +593,6 @@ private struct CalendarSettings: View {
                 Text("選んだカレンダーに予定が入っている時間に、新しい予定を入れようとすると、「〇〇が入っていますが、よろしいですか？」と確認します。終日の予定（祝日など）は数えません。何も選ばないときは、主カレンダーだけを見ます。")
                     .font(.caption).foregroundStyle(.secondary)
             }
-            Section("提出物の確認（勤務表など）") {
-                TextField("提出物を集めるフォルダ", text: $s.submissionParentFolder,
-                          prompt: Text("Google ドライブのフォルダの URL を貼り付け"))
-                TextField("名簿のスプレッドシート", text: $s.rosterSheet,
-                          prompt: Text("スプレッドシートの URL を貼り付け"))
-                TextField("名前が並ぶ範囲", text: $s.rosterRange, prompt: Text("例: シート1!A2:A"))
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("または、名前を直接書く（1行に1名。上のシートが空のときに使います）")
-                    TextEditor(text: $s.rosterNames)
-                        .frame(height: 80)
-                        .font(.body)
-                        .overlay(RoundedRectangle(cornerRadius: 5).stroke(.secondary.opacity(0.4)))
-                }
-                Text("「未提出は誰？」と聞くと、フォルダの中のフォルダ名（またはファイル名）と名簿を突き合わせ、出していない人を挙げます。月ごとのフォルダは「10月のフォルダを作って」と頼めば作れます。締切前の自動確認は、設定 → お知らせ の「提出物の締切前の確認」をオンにしてください。")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
         }
         .formStyle(.grouped)
         .task {
