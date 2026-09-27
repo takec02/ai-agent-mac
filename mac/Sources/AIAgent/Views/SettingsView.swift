@@ -11,7 +11,7 @@ struct SettingsView: View {
             WatchSettings().tabItem { Label("お知らせ", systemImage: "bell") }
             MemorySettings().tabItem { Label("記憶", systemImage: "brain.head.profile") }
             InterpreterSettings().tabItem { Label("通訳", systemImage: "globe") }
-            CalendarSettings().tabItem { Label("予定・提出物", systemImage: "calendar") }
+            CalendarSettings().tabItem { Label("予定", systemImage: "calendar") }
             IntegrationSettings().tabItem { Label("連携", systemImage: "point.3.connected.trianglepath.dotted") }
         }
         .frame(width: 520, height: 580)
