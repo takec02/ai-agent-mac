@@ -275,6 +275,10 @@ struct HUDView: View {
             }
         }
         .preferredColorScheme(.dark)
+        .onKeyPress(.escape) {
+            agent.stopTalking()
+            return .handled
+        }
         .onDrop(of: [.fileURL, .image], isTargeted: nil) { providers in
             guard let provider = providers.first else { return false }
             _ = provider.loadObject(ofClass: URL.self) { url, _ in
@@ -438,8 +442,15 @@ struct HUDView: View {
     private func controlRow(tint: Color) -> some View {
         @Bindable var s = agent.settings
         HStack(spacing: 14) {
-            HUDButton(symbol: agent.isPaused ? "mic.slash" : "mic", tint: tint, help: agent.isPaused ? "マイクを再開" : "マイクを一時停止", onHover: { hoveredLabel = $0 }) {
-                agent.toggleMicrophone()
+            if agent.state == .speaking || agent.state == .thinking {
+                HUDButton(symbol: "stop.fill", tint: .red, help: "話を止める（Esc キーでも、「ストップ」と言っても止まります）",
+                          active: true, onHover: { hoveredLabel = $0 }) {
+                    agent.stopTalking()
+                }
+            } else {
+                HUDButton(symbol: agent.isPaused ? "mic.slash" : "mic", tint: tint, help: agent.isPaused ? "マイクを再開" : "マイクを一時停止", onHover: { hoveredLabel = $0 }) {
+                    agent.toggleMicrophone()
+                }
             }
             HUDButton(symbol: "keyboard", tint: tint, help: "文字で話しかける", active: showInput, onHover: { hoveredLabel = $0 }) {
                 withAnimation(.easeOut(duration: 0.2)) { showInput.toggle() }

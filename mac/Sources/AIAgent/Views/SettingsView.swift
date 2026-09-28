@@ -76,6 +76,9 @@ private struct GeneralSettings: View {
                 Toggle("ログイン時に起動", isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { _, v in s.launchAtLogin = v }
                 Toggle("呼びかけに反応したら効果音を鳴らす", isOn: $s.chime)
+                Toggle("読み上げ中に「ストップ」と言ったら止める", isOn: $s.stopByVoice)
+                Text("話している間はマイクを生かし、「ストップ」「やめて」「黙って」だけを受け付けます。画面の停止ボタン（赤）と Esc キーでも止まります。")
+                    .font(.caption).foregroundStyle(.secondary)
                 Picker("呼びかけのあと、続けて話せる時間", selection: $s.followupSeconds) {
                     Text("オフ（毎回呼びかける）").tag(0.0)
                     Text("30秒").tag(30.0)

@@ -87,6 +87,9 @@ final class AppSettings {
     /// 予定を入れる前に重なりを調べるカレンダー（ID をカンマ区切り。空なら主カレンダーだけ）
     var conflictCalendars: String { didSet { d.set(conflictCalendars, forKey: "conflictCalendars") } }
 
+    /// 読み上げ中に「ストップ」と言って止められるようにする
+    var stopByVoice: Bool { didSet { d.set(stopByVoice, forKey: "stopByVoice") } }
+
     /// 絵を作ってもらうサーバー（社内の Mac など）の URL
     var imageServer: String { didSet { d.set(imageServer, forKey: "imageServer") } }
 
@@ -140,6 +143,7 @@ final class AppSettings {
         ollamaContext = d.object(forKey: "ollamaContext") as? Int ?? 16384
         visionModel = d.string(forKey: "visionModel") ?? ""
         conflictCalendars = d.string(forKey: "conflictCalendars") ?? ""
+        stopByVoice = d.object(forKey: "stopByVoice") as? Bool ?? true
         imageServer = d.string(forKey: "imageServer") ?? ""
         interpreterLanguage = d.string(forKey: "interpreterLanguage") ?? "en-US"
         interpreterUseAI = d.object(forKey: "interpreterUseAI") as? Bool ?? false

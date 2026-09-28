@@ -69,6 +69,8 @@ final class AgentController {
     private var pendingJapanese: String?
     private var pendingForeign: String?
     private var interpretTask: Task<Void, Never>?
+    /// 今の返答の処理（止めるときに打ち切る）
+    private var responseTask: Task<Void, Never>?
 
     /// 会議の記録（画面の REC 表示にも使う）
     let meeting = MeetingRecorder()
@@ -228,6 +230,28 @@ final class AgentController {
         }
     }
 
+    /// 話している・考えている途中で止める（ボタン・Esc キー・「ストップ」の声から呼ばれる）
+    func stopTalking() {
+        guard state == .speaking || state == .thinking else { return }
+        Log.write("stopped by user")
+        responseTask?.cancel()
+        responseTask = nil
+        speaker.stop()
+        liveText = ""
+        entries.append(ConversationEntry(role: "system", text: "— 止めました"))
+        openFollowup()  // そのまま続けて話しかけられる
+    }
+
+    /// 「ストップ」など、話を止めてほしい短い言葉か
+    static func isStopWord(_ text: String) -> Bool {
+        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard t.count <= 8 else { return false }
+        // 言い切りの形だけを拾う（「やめておきます」「音楽を止めて」では止めない）
+        let patterns = ["^(ストップ|すとっぷ|stop)[。、！!]?$", "^(止めて|とめて|やめて|辞めて)[。、！!]?$",
+                        "^(黙って|だまって)[。、！!]?$", "^もういい[。、！!よ]?$", "^(ちょっと)?待って[。、！!]?$"]
+        return patterns.contains { t.range(of: $0, options: [.regularExpression, .caseInsensitive]) != nil }
+    }
+
     /// 時間のかかる処理の途中経過を画面に出す（「写真を見ています…」など）
     func showNote(_ text: String) { liveText = text }
 
@@ -334,6 +358,11 @@ final class AgentController {
     private func onTranscript(_ text: String, isFinal: Bool, locale: Locale = Locale(identifier: "ja-JP")) {
         // 聞き取った内容は周囲の会話も含むため、明示的に有効にしたとき（調査用）だけ記録する
         if isFinal, UserDefaults.standard.bool(forKey: "debugTranscripts") { Log.write("heard [\(state.label)] \(text)") }
+        // 読み上げ中は「ストップ」だけを受け付ける（自分の声を拾っても、止める言葉でなければ無視する）
+        if state == .speaking || state == .thinking {
+            if isFinal, Self.isStopWord(text) { stopTalking() }
+            return
+        }
         guard state == .idle || state == .listening else { return }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
@@ -481,7 +510,7 @@ final class AgentController {
         let sendHistory = isLocal ? history : history.filter { !$0.localOnly }
         _ = MCPManager.shared.consumeLocalOnlyUsage()
         syncVoice()
-        Task {
+        responseTask = Task {
             let reply = ConversationEntry(role: "assistant", text: "")
             entries.append(reply)
             var splitter = SentenceSplitter()
@@ -521,6 +550,7 @@ final class AgentController {
                         for sentence in splitter.push(chunk) {
                             speaker.say(sentence)
                             state = .speaking
+                            listenForStop()
                         }
                     }
                     speaker.say(splitter.flush())
@@ -598,6 +628,12 @@ final class AgentController {
         state = .speaking
         speaker.say(text)
         await speaker.waitUntilIdle()
+    }
+
+    /// 読み上げ中に「ストップ」と言われたときのために、マイクを生かしておく
+    private func listenForStop() {
+        guard settings.stopByVoice else { return }
+        listener.muted = false
     }
 
     // MARK: 書き込み前の確認
