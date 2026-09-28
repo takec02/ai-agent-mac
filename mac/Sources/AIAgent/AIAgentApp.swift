@@ -113,7 +113,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     Camera.shared.note(reading: reading.text.joined(separator: "\n"))
                     let backend = try makeBackend(.local, settings: AppSettings.shared)
                     var full = ""
-                    for try await chunk in backend.respond(history: [], user: args[i + 2] + "\n（画像が添付されています。look_image ツールで見てから答えてください）", system: "あなたは日本語で短く答える秘書です。") {
+                    for try await chunk in backend.respond(history: [], user: args[i + 2] + "\n（画像が添付されています。look_image ツールで見てから答えてください）", system: AgentController.shared.debugSystemPrompt()) {
                         full += chunk
                     }
                     print("答え: \(full)")

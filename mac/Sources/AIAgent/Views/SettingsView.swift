@@ -1,5 +1,6 @@
 import AVFoundation
 import SwiftUI
+import Contacts
 import Translation
 
 struct SettingsView: View {
@@ -574,11 +575,33 @@ private struct InterpreterSettings: View {
 private struct CalendarSettings: View {
     @Environment(AgentController.self) private var agent
     @State private var calendars: [(id: String, name: String)] = []
+    @State private var contactsStatus = CNContactStore.authorizationStatus(for: .contacts).rawValue
     @State private var loading = true
 
     var body: some View {
         @Bindable var s = agent.settings
         Form {
+            Section("連絡先") {
+                HStack {
+                    switch contactsStatus {
+                    case 3: Label("許可されています", systemImage: "checkmark.circle")
+                    case 2, 1: Label("許可されていません（システム設定 → プライバシーとセキュリティ → 連絡先）", systemImage: "exclamationmark.triangle")
+                    default: Label("まだ許可を求めていません", systemImage: "questionmark.circle")
+                    }
+                    Spacer()
+                    if contactsStatus == 3 {
+                        Button("確かめる") { checkContacts() }
+                    } else if contactsStatus == 0 {
+                        Button("許可する") { askContacts() }
+                    } else {
+                        Button("システム設定を開く") {
+                            NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Contacts")!)
+                        }
+                    }
+                }
+                Text("許可すると、「〇〇さんの電話番号は？」「今週誕生日の人は？」に答えられます。名刺をカメラに見せて「これ登録して」と言うと、読み取って連絡先に登録します（登録前に確認します）。")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             Section("予定を入れる前に、重なりを確かめるカレンダー") {
                 if loading {
                     HStack { ProgressView().controlSize(.small); Text("カレンダーを読み込んでいます…") }
@@ -603,6 +626,17 @@ private struct CalendarSettings: View {
             }
             loading = false
         }
+    }
+
+    private func askContacts() {
+        Task {
+            try? await ContactsBook.requestAccess()
+            checkContacts()
+        }
+    }
+
+    private func checkContacts() {
+        contactsStatus = CNContactStore.authorizationStatus(for: .contacts).rawValue
     }
 
     private func binding(for id: String) -> Binding<Bool> {

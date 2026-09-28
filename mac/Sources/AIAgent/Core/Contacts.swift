@@ -9,7 +9,8 @@ enum ContactsBook {
 
     private static let keys: [CNKeyDescriptor] = [
         CNContactGivenNameKey, CNContactFamilyNameKey, CNContactOrganizationNameKey, CNContactJobTitleKey,
-        CNContactPhoneNumbersKey, CNContactEmailAddressesKey, CNContactBirthdayKey, CNContactNoteKey,
+        // メモ（CNContactNoteKey）は Apple の特別な許可が要るので扱わない（読もうとすると落ちる）
+        CNContactPhoneNumbersKey, CNContactEmailAddressesKey, CNContactBirthdayKey,
         CNContactPostalAddressesKey,
     ].map { $0 as CNKeyDescriptor }
 
@@ -68,7 +69,6 @@ enum ContactsBook {
             let year = birthday.year.map { "\($0)年" } ?? ""
             lines.append("誕生日: \(year)\(month)月\(day)日")
         }
-        if !contact.note.isEmpty { lines.append("メモ: \(contact.note)") }
         return lines.joined(separator: "\n")
     }
 
@@ -123,7 +123,8 @@ enum ContactsBook {
         contact.emailAddresses = new.emails.filter { !$0.isEmpty }.map {
             CNLabeledValue(label: CNLabelWork, value: $0 as NSString)
         }
-        contact.note = new.note
+        // メモは特別な許可が要るため、会社名の後ろに添える
+        if !new.note.isEmpty, new.organization.isEmpty { contact.organizationName = new.note }
         let request = CNSaveRequest()
         request.add(contact, toContainerWithIdentifier: nil)
         do {
