@@ -12,6 +12,8 @@ final class Camera {
     /// 直前に撮った写真（画面の確認用）
     private(set) var lastPhoto: NSImage?
     private(set) var lastPhotoAt: Date?
+    /// 画面に出すときの見出し（「カメラで見たもの」「作った画像」）
+    private(set) var lastPhotoLabel = "カメラで見たもの"
     /// 直前に読み取った内容（「これ、予定に入れて」のように後から指されたときに使う）
     private(set) var lastReading: String?
 
@@ -29,6 +31,7 @@ final class Camera {
 
     /// 1枚撮って、文字とコードを読み取る
     func look() async throws -> Reading {
+        lastPhotoLabel = "カメラで見たもの"
         let image = try await Self.capture()
         Self.shutter?.play()  // 撮ったことが分かるように鳴らす
         let (text, codes) = try await Task.detached(priority: .userInitiated) { try Self.analyze(image) }.value
@@ -68,6 +71,7 @@ final class Camera {
 
     @discardableResult
     func attach(image: CGImage) throws -> Reading {
+        lastPhotoLabel = "渡された画像"
         let (text, codes) = try Self.analyze(image)
         guard let jpeg = Self.jpeg(image, maxSide: 1024) else { throw Tools.ToolError(message: "画像を変換できませんでした") }
         lastPhoto = NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
@@ -78,6 +82,15 @@ final class Camera {
     }
 
     func attachmentUsed() { hasAttachment = false }
+
+    /// 作った画像などを、カメラの写真と同じ場所に出す
+    func show(image: NSImage, label: String) {
+        lastPhoto = image
+        lastPhotoAt = Date()
+        lastPhotoLabel = label
+        lastReading = nil
+        hasAttachment = false
+    }
 
     /// 読み取った内容を覚えておく（10分以内なら「これ」で参照できる）
     func note(reading: String) { lastReading = reading }

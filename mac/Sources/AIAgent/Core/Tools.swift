@@ -78,6 +78,9 @@ enum Tools {
                  description: "登録した資料（PDF・Word・PowerPoint・Excel・テキストなど）の中から、質問に関係する箇所を探す。資料の内容について聞かれたら、答える前に必ずこれを使う。query は探したい言葉",
                  properties: ["query": ["type": "string"]]),
         ToolSpec(name: "list_documents", description: "登録されている資料の一覧を返す", properties: [:]),
+        ToolSpec(name: "generate_image",
+                 description: "頼まれた絵を作る。「〇〇の絵を描いて」「画像を作って」と言われたら使う。prompt は作ってほしい内容を具体的に（例: 夜空を見上げる青年、アニメ調）",
+                 properties: ["prompt": ["type": "string"]]),
         ToolSpec(name: "find_contact",
                  description: "Mac の連絡先から人を探して、電話番号・メール・誕生日・会社を返す。「〇〇さんの電話番号は？」「〇〇さんのメアド教えて」と聞かれたら使う。query は名前や会社名の一部",
                  properties: ["query": ["type": "string"]]),
@@ -244,6 +247,9 @@ enum Tools {
             let sources = Library.shared.sources
             guard !sources.isEmpty else { return "資料はまだ登録されていません" }
             return "登録されている資料 \(sources.count)件:\n" + sources.map { "・\($0.name)" }.joined(separator: "\n")
+        case "generate_image":
+            let saved = try await ImageMaker.make(prompt: args["prompt"] as! String)
+            return "絵ができました（画面に出しています）。保存先: 書類 > AIエージェント > 画像 > \(saved.lastPathComponent)"
         case "find_contact":
             return try await ContactsBook.find(args["query"] as! String)
         case "upcoming_birthdays":

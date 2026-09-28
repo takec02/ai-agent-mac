@@ -87,6 +87,9 @@ final class AppSettings {
     /// 予定を入れる前に重なりを調べるカレンダー（ID をカンマ区切り。空なら主カレンダーだけ）
     var conflictCalendars: String { didSet { d.set(conflictCalendars, forKey: "conflictCalendars") } }
 
+    /// 絵を作ってもらうサーバー（社内の Mac など）の URL
+    var imageServer: String { didSet { d.set(imageServer, forKey: "imageServer") } }
+
     /// 通訳するときの相手の言語（音声認識の識別子。既定は英語）
     var interpreterLanguage: String { didSet { d.set(interpreterLanguage, forKey: "interpreterLanguage") } }
     /// 翻訳を AI にさせる（オフなら macOS 内蔵の翻訳。内蔵が使えないときは自動で AI になる）
@@ -137,6 +140,7 @@ final class AppSettings {
         ollamaContext = d.object(forKey: "ollamaContext") as? Int ?? 16384
         visionModel = d.string(forKey: "visionModel") ?? ""
         conflictCalendars = d.string(forKey: "conflictCalendars") ?? ""
+        imageServer = d.string(forKey: "imageServer") ?? ""
         interpreterLanguage = d.string(forKey: "interpreterLanguage") ?? "en-US"
         interpreterUseAI = d.object(forKey: "interpreterUseAI") as? Bool ?? false
         interpreterSpeak = d.object(forKey: "interpreterSpeak") as? Bool ?? true

@@ -225,6 +225,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             exit(0)
         }
+        // 動作確認用: `AIAgent --image-make-selftest "頼みたい絵"` で、画像生成を試す
+        if let i = args.firstIndex(of: "--image-make-selftest"), args.count > i + 1 {
+            Task { @MainActor in
+                let started = Date()
+                do {
+                    let saved = try await ImageMaker.make(prompt: args[i + 1])
+                    print(String(format: "%.0f秒でできました: %@", Date().timeIntervalSince(started), saved.path))
+                } catch {
+                    print("error: \(error.localizedDescription)")
+                }
+                exit(0)
+            }
+            return
+        }
         // 動作確認用: `AIAgent --contacts-selftest [探す言葉]` で、連絡先の読み取りを試す（登録はしない）
         if let i = args.firstIndex(of: "--contacts-selftest") {
             Task { @MainActor in

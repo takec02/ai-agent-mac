@@ -85,11 +85,22 @@ final class SpeechListener: @unchecked Sendable {
         try? await analyzer.setContext(context)
     }
 
+    /// マイクがつながっているか（Mac Studio のように、マイクの無い Mac もある）
+    static var hasMicrophone: Bool {
+        AVCaptureDevice.default(for: .audio) != nil
+    }
+
     private func startEngine() throws {
         engine.stop()
         let input = engine.inputNode
         input.removeTap(onBus: 0)
         let inputFormat = input.outputFormat(forBus: 0)
+        // マイクが無いと形式が 0Hz になり、取り付けたところで例外で落ちる
+        guard inputFormat.sampleRate > 0, inputFormat.channelCount > 0 else {
+            throw NSError(domain: "AIAgent", code: 2, userInfo: [
+                NSLocalizedDescriptionKey: "マイクが見つかりません。マイクをつなぐか、キーボードのボタンから文字で話しかけてください",
+            ])
+        }
         guard let targetFormat else { return }
         converter = AVAudioConverter(from: inputFormat, to: targetFormat)
         input.installTap(onBus: 0, bufferSize: 4096, format: inputFormat) { [weak self] buffer, _ in

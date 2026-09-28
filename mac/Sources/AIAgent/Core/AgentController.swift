@@ -97,6 +97,15 @@ final class AgentController {
         Task { await MCPManager.shared.reload() }
         state = .starting
         Task {
+            // マイクが無い Mac（Mac Studio など）でも、文字入力だけで使えるようにする
+            guard SpeechListener.hasMicrophone else {
+                Log.write("no microphone; text-only mode")
+                state = .error("マイクが見つかりません。キーボードのボタンから文字で話しかけられます")
+                started = false
+                Notifier.requestPermission()
+                scheduler.start()
+                return
+            }
             guard await SpeechListener.requestPermission() else {
                 state = .error("マイクの使用が許可されていません（システム設定 → プライバシーとセキュリティ → マイク）")
                 started = false

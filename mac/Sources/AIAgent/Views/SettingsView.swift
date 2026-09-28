@@ -111,6 +111,13 @@ private struct AISettings: View {
                 Text("会話中に「クロードに切り替えて」のように話しても変更できます。")
                     .font(.caption).foregroundStyle(.secondary)
             }
+            Section("画像生成") {
+                TextField("絵を作ってもらう Mac", text: $s.imageServer,
+                          prompt: Text("例: http://192.168.100.200:8770"))
+                APIKeyField(account: "imageServer", placeholder: "合言葉（サーバー側で設定したとき）", link: "")
+                Text("「〇〇の絵を描いて」と頼むと、ここに書いた Mac で絵を作り、できた画像を受け取って `書類 > AIエージェント > 画像` に保存します。空欄のときは絵を作れません。")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             Section("ローカル (Ollama) — 無料") {
                 TextField("モデル", text: $s.ollamaModel)
                 Picker("一度に扱える量", selection: $s.ollamaContext) {
@@ -183,6 +190,7 @@ private struct AISettings: View {
 private struct APIKeyField: View {
     let account: String
     let placeholder: String
+    /// 空のときは案内のリンクを出さない
     let link: String
     var onSaved: (() -> Void)?
     @State private var value = ""
@@ -201,14 +209,16 @@ private struct APIKeyField: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("API キー")
+                Text(link.isEmpty ? "合言葉" : "API キー")
                 Spacer()
                 if trimmed.isEmpty {
                     Label("未登録", systemImage: "circle.dashed").foregroundStyle(.secondary)
                 } else {
                     Label("登録済み（…\(trimmed.suffix(4))）", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
                 }
-                Link("キーを取得", destination: URL(string: link)!)
+                if let url = URL(string: link), !link.isEmpty {
+                    Link("キーを取得", destination: url)
+                }
             }
             .font(.callout)
             HStack(spacing: 6) {

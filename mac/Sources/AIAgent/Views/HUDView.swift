@@ -373,7 +373,7 @@ struct HUDView: View {
                         .help("写真を消す")
                         .padding(3)
                     }
-                Text("カメラで見たもの \(Camera.shared.lastPhotoAt?.formatted(date: .omitted, time: .standard) ?? "")")
+                Text("\(Camera.shared.lastPhotoLabel) \(Camera.shared.lastPhotoAt?.formatted(date: .omitted, time: .standard) ?? "")")
                     .font(.system(size: 9, design: .monospaced))
                     .foregroundStyle(tint.opacity(0.8))
             }
