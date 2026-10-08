@@ -78,6 +78,12 @@ enum Tools {
                  description: "登録した資料（PDF・Word・PowerPoint・Excel・テキストなど）の中から、質問に関係する箇所を探す。資料の内容について聞かれたら、答える前に必ずこれを使う。query は探したい言葉",
                  properties: ["query": ["type": "string"]]),
         ToolSpec(name: "list_documents", description: "登録されている資料の一覧を返す", properties: [:]),
+        ToolSpec(name: "add_mcp_server",
+                 description: "外部サービスの MCP サーバーを登録して使えるようにする。「このMCPを登録して」とURLを渡されたら使う。name は英数字の短い名前（例: openpoi）、url は MCP の接続先（https で終わりが /mcp のことが多い）、token は必要なときだけ。登録前に確認する",
+                 properties: ["name": ["type": "string"], "url": ["type": "string"], "token": ["type": "string", "optional": true]]),
+        ToolSpec(name: "list_mcp_servers", description: "今つながっている外部サービス（MCP サーバー）の一覧と状態を返す", properties: [:]),
+        ToolSpec(name: "remove_mcp_server", description: "登録した MCP サーバーを外す。name は登録名。外す前に確認する",
+                 properties: ["name": ["type": "string"]]),
         ToolSpec(name: "generate_image",
                  description: "頼まれた絵を作る。「〇〇の絵を描いて」「画像を作って」と言われたら使う。prompt は作ってほしい内容を具体的に（例: 夜空を見上げる青年、アニメ調）",
                  properties: ["prompt": ["type": "string"]]),
@@ -90,8 +96,10 @@ enum Tools {
         ToolSpec(name: "save_contact",
                  description: "Mac の連絡先に新しい人を登録する。名刺を読み取ったあとに使う。phone と email は複数ある場合カンマ区切り。登録前に確認が出る",
                  properties: ["family_name": ["type": "string"], "given_name": ["type": "string"],
-                              "organization": ["type": "string"], "job_title": ["type": "string"],
-                              "phone": ["type": "string"], "email": ["type": "string"], "note": ["type": "string"]]),
+                              "organization": ["type": "string", "optional": true],
+                              "phone": ["type": "string", "optional": true], "email": ["type": "string", "optional": true],
+                              "note": ["type": "string", "optional": true],
+                              "job_title": ["type": "string", "optional": true]]),
         ToolSpec(name: "import_contacts",
                  description: "名刺アプリ（Eight など）から書き出した CSV を読み込んで、Mac の連絡先にまとめて登録する。file は CSV のパス。資料として登録した CSV があれば、その名前でもよい。登録前に件数を確認する",
                  properties: ["file": ["type": "string"]]),
@@ -142,7 +150,11 @@ enum Tools {
         }
         var clean: [String: Any] = [:]
         for (key, prop) in spec.properties {
-            guard let value = raw[key] else { throw ToolError(message: "missing argument: \(key)") }
+            guard let value = raw[key] else {
+                // 省略してよい項目（"optional": true）は、無ければ空のまま進める
+                if prop["optional"] as? Bool == true { continue }
+                throw ToolError(message: "missing argument: \(key)")
+            }
             if prop["type"] as? String == "integer" {
                 // 小さいローカルモデルは "50" のように文字列で渡してくることがある
                 guard let n = (value as? NSNumber)?.doubleValue ?? Double("\(value)") else {
@@ -247,6 +259,37 @@ enum Tools {
             let sources = Library.shared.sources
             guard !sources.isEmpty else { return "資料はまだ登録されていません" }
             return "登録されている資料 \(sources.count)件:\n" + sources.map { "・\($0.name)" }.joined(separator: "\n")
+        case "add_mcp_server":
+            let name = (args["name"] as! String).trimmingCharacters(in: .whitespaces)
+            let url = (args["url"] as! String).trimmingCharacters(in: .whitespaces)
+            let token = (args["token"] as? String ?? "").trimmingCharacters(in: .whitespaces)
+            guard !name.isEmpty, !url.isEmpty else { throw ToolError(message: "名前と URL が要ります") }
+            guard await AgentController.shared.confirm("""
+                外部サービス「\(name)」を登録します
+                接続先: \(url)
+                登録すると、このサービスの機能を私が使えるようになります。
+                よろしいですか？
+                """) else { return "ユーザーが取りやめました。登録していません" }
+            do {
+                try await MCPManager.shared.addRemoteServer(name: name, url: url, needsLogin: false,
+                                                            bearerToken: token.isEmpty ? nil : token)
+            } catch {
+                throw ToolError(message: "登録できませんでした: \(error.localizedDescription)")
+            }
+            // つながるまで少し待ってから、結果を見る
+            try? await Task.sleep(for: .seconds(3))
+            let state = MCPManager.shared.statusText(of: name)
+            return "「\(name)」を登録しました。状態: \(state)"
+        case "list_mcp_servers":
+            let summary = MCPManager.shared.allStatusText()
+            return summary.isEmpty ? "登録されている外部サービスはありません" : summary
+        case "remove_mcp_server":
+            let name = (args["name"] as! String).trimmingCharacters(in: .whitespaces)
+            guard await AgentController.shared.confirm("外部サービス「\(name)」の登録を外します。よろしいですか？") else {
+                return "ユーザーが取りやめました。外していません"
+            }
+            try await MCPManager.shared.removeServer(name)
+            return "「\(name)」の登録を外しました"
         case "generate_image":
             let saved = try await ImageMaker.make(prompt: args["prompt"] as! String)
             return "絵ができました（画面に出しています）。保存先: 書類 > AIエージェント > 画像 > \(saved.lastPathComponent)"

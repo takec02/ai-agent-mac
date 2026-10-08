@@ -224,6 +224,22 @@ final class MCPManager {
     }
 
     /// AI への指示に書く「今つながっているサービス」の説明
+    /// 1つのサーバーの状態を、人に読める言葉で返す
+    func statusText(of name: String) -> String {
+        switch status[name] {
+        case .connected: "つながりました（ツール \(toolNames(of: name).count) 個）"
+        case .connecting: "接続中"
+        case .disabled: "無効"
+        case .unavailable(let message): "つながりません（\(message)）"
+        case .none: "登録されていません"
+        }
+    }
+
+    /// すべてのサーバーの状態（会話で聞かれたときに使う）
+    func allStatusText() -> String {
+        serverNames.map { "・\($0): \(statusText(of: $0))" }.joined(separator: "\n")
+    }
+
     func connectedSummary(includeLocalOnly: Bool) -> String {
         var names: [String] = []
         for n in serverNames {
@@ -733,6 +749,11 @@ final class MCPManager {
             hints = Self.topics.filter { $0.words.contains(where: q.contains) }.flatMap(\.hints)
             // サーバー名がそのまま出てきたら、そのサーバーのツールを全部
             hints! += serverNames.filter { q.contains($0.lowercased()) }
+            // 話題の表に載っていないサーバー（あとから登録したもの）は、いつでも候補に入れる。
+            // 入れないと、せっかく登録しても使われない
+            hints! += serverNames.filter { name in
+                !Self.topics.flatMap(\.hints).contains { name.lowercased().contains($0) }
+            }
         }
         return serverNames.flatMap { name -> [ToolSpec] in
             guard let c = connections[name], includeLocalOnly || !isLocalOnly(name) else { return [] }
