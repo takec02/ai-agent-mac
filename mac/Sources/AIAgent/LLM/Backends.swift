@@ -174,7 +174,16 @@ struct OllamaBackend: LLMBackend {
                         do {
                             lines = try await HTTP.postLines("\(host)/api/chat", headers: [:], body: body)
                         } catch let e as URLError where e.code == .cannotConnectToHost {
-                            throw LLMError(message: "Ollama に接続できません。Ollama を起動してください")
+                            // 止まっていたら自分で起動して、もう一度だけ試す
+                            AgentController.shared.showNote("ローカル AI（Ollama）を起動しています…")
+                            let started = await OllamaLauncher.shared.start()
+                            AgentController.shared.showNote("")
+                            guard started else {
+                                throw LLMError(message: OllamaLauncher.isInstalled
+                                    ? "Ollama を起動できませんでした。画面の「Ollama を起動」ボタンをもう一度押してください"
+                                    : "Ollama が入っていません（設定 → AI の「Ollama をダウンロード」から入れてください）")
+                            }
+                            lines = try await HTTP.postLines("\(host)/api/chat", headers: [:], body: body)
                         }
                         var text = ""
                         var calls: [[String: Any]] = []

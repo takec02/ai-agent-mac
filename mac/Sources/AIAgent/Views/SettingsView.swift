@@ -131,6 +131,18 @@ private struct AISettings: View {
                 TextField("写真を見るモデル", text: $s.visionModel, prompt: Text("空欄なら自動（gemma3 など、画像を読めるモデルを探す）"))
                 Text("会話に使うモデルが画像を読めないとき、写真だけをこのモデルに見せて説明してもらいます。写真は Mac の外に出ません。")
                     .font(.caption).foregroundStyle(.secondary)
+                HStack {
+                    Label(OllamaLauncher.shared.running ? "Ollama は動いています" : "Ollama は止まっています",
+                          systemImage: OllamaLauncher.shared.running ? "checkmark.circle" : "exclamationmark.triangle")
+                    Spacer()
+                    if !OllamaLauncher.shared.running, OllamaLauncher.isInstalled {
+                        Button(OllamaLauncher.shared.starting ? "起動中…" : "Ollama を起動") {
+                            Task { await OllamaLauncher.shared.start() }
+                        }
+                        .disabled(OllamaLauncher.shared.starting)
+                    }
+                }
+                .task { await OllamaLauncher.shared.check() }
                 Link("Ollama をダウンロード", destination: URL(string: "https://ollama.com/download")!)
             }
             Section("Claude — 従量課金") {

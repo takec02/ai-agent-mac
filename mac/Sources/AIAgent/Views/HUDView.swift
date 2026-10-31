@@ -275,6 +275,13 @@ struct HUDView: View {
             }
         }
         .preferredColorScheme(.dark)
+        .task {
+            // ローカル AI が動いているかを、30秒ごとに確かめる
+            while !Task.isCancelled {
+                if agent.settings.backend == .local { await OllamaLauncher.shared.check() }
+                try? await Task.sleep(for: .seconds(30))
+            }
+        }
         .onKeyPress(.escape) {
             agent.stopTalking()
             return .handled
@@ -312,6 +319,21 @@ struct HUDView: View {
                             .foregroundStyle(.red)
                     }
                 }
+                .padding(.trailing, 6)
+            }
+            if agent.settings.backend == .local, !OllamaLauncher.shared.running {
+                Button {
+                    Task { await OllamaLauncher.shared.start() }
+                } label: {
+                    Label(OllamaLauncher.shared.starting ? "起動中…" : "Ollama を起動", systemImage: "power")
+                        .font(.system(size: 10, weight: .medium))
+                        .padding(.horizontal, 8).padding(.vertical, 4)
+                        .overlay(Capsule().stroke(Color.orange.opacity(0.7), lineWidth: 0.8))
+                        .foregroundStyle(.orange)
+                }
+                .buttonStyle(.plain)
+                .disabled(OllamaLauncher.shared.starting)
+                .help("ローカル AI（Ollama）が止まっています。押すと起動します")
                 .padding(.trailing, 6)
             }
             Text(agent.settings.backend.shortLabel.uppercased())

@@ -97,6 +97,7 @@ final class AgentController {
         guard settings.isNamed, !started else { return }
         started = true
         Task { await MCPManager.shared.reload() }
+        if settings.backend == .local { Task { await OllamaLauncher.shared.start() } }
         state = .starting
         Task {
             // マイクが無い Mac（Mac Studio など）でも、文字入力だけで使えるようにする
@@ -147,8 +148,7 @@ final class AgentController {
             Log.write("listening started. wake words: \(settings.wakeWords)")
             Notifier.requestPermission()
             scheduler.start()
-            state = .idle
-            await speakAndWait("\(settings.agentName)、起動しました。")
+            // 起動のあいさつはしない（毎回しゃべられると邪魔なため）
             setIdle()
         }
     }
