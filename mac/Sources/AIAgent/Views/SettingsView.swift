@@ -158,6 +158,30 @@ private struct AISettings: View {
                 APIKeyField(account: "gemini", placeholder: "AIza… を貼り付け", link: "https://aistudio.google.com/apikey")
             }
             Section {
+                LabeledContent("状態") {
+                    if !SearchServer.isInstalled {
+                        Text("入っていません").foregroundStyle(.secondary)
+                    } else {
+                        HStack(spacing: 8) {
+                            Label(SearchServer.shared.running ? "動いています" : "止まっています",
+                                  systemImage: SearchServer.shared.running ? "checkmark.circle" : "exclamationmark.triangle")
+                                .foregroundStyle(SearchServer.shared.running ? Color.green : Color.orange)
+                            if !SearchServer.shared.running {
+                                Button(SearchServer.shared.starting ? "起動中…" : "起動") {
+                                    Task { await SearchServer.shared.start() }
+                                }
+                                .disabled(SearchServer.shared.starting)
+                            }
+                        }
+                    }
+                }
+                .task { await SearchServer.shared.check() }
+            } header: {
+                Text("Web 検索（RustXNG）— この Mac で動かす無料の検索")
+            } footer: {
+                Text("入っていればこちらを優先して使います。回数の上限はありません。検索した言葉は、DuckDuckGo などの検索サイトに送られます。入れ方は README を見てください。")
+            }
+            Section {
                 APIKeyField(account: "tavily", placeholder: "tvly-… を貼り付け", link: "https://app.tavily.com") {
                     Task { await refreshUsage() }
                 }
@@ -177,9 +201,9 @@ private struct AISettings: View {
                     }
                 }
             } header: {
-                Text("Web 検索（Tavily）— 月1,000回まで無料")
+                Text("Web 検索（Tavily）— 予備。月1,000回まで無料")
             } footer: {
-                Text("ローカル・GPT・Gemini のときに使います。Claude のときは Claude 内蔵の Web 検索（1,000回あたり約10ドル）を使います。無料枠を使い切ると、翌月の枠が回復するまで検索できません（その間はブラウザで開く検索を提案します）。")
+                Text("RustXNG が無いか、止まっているときに使います（ローカル・GPT・Gemini のとき）。Claude のときは Claude 内蔵の Web 検索（1,000回あたり約10ドル）を使います。無料枠を使い切ると、翌月の枠が回復するまで検索できません（その間はブラウザで開く検索を提案します）。")
             }
             Section {
                 Text("API キーは入力するとすぐに Mac のキーチェーンに保存されます。")

@@ -129,8 +129,19 @@ enum WebTools {
     static let blockedHosts = ["weathernews.jp", "weathernews.com"]
 
     static func search(query: String) async throws -> String {
+        // 自分の Mac の検索（RustXNG）が使えればそちらを使う。だめなら Tavily
+        let server = SearchServer.shared
+        if SearchServer.isInstalled, await server.start() {
+            do {
+                let result = try await server.search(query: query)
+                Log.write("search: rustxng")
+                return result
+            } catch {
+                Log.write("search: rustxng failed (\(error.localizedDescription)), falling back to tavily")
+            }
+        }
         guard let key = Keychain.get("tavily"), !key.isEmpty else {
-            throw Tools.ToolError(message: "Tavily の API キーが未設定のため検索できません（設定 → AI で登録）")
+            throw Tools.ToolError(message: "検索できません。RustXNG を入れるか、Tavily の API キーを登録してください（設定 → AI）")
         }
         var req = URLRequest(url: URL(string: "https://api.tavily.com/search")!, timeoutInterval: 20)
         req.httpMethod = "POST"

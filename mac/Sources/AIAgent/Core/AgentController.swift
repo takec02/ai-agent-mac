@@ -99,6 +99,8 @@ final class AgentController {
         started = true
         Task { await MCPManager.shared.reload() }
         if settings.backend == .local { Task { await OllamaLauncher.shared.start() } }
+        // 自分の Mac の Web 検索（入っていれば）も起こしておく
+        if SearchServer.isInstalled { Task { await SearchServer.shared.start() } }
         state = .starting
         Task {
             // マイクが無い Mac（Mac Studio など）でも、文字入力だけで使えるようにする

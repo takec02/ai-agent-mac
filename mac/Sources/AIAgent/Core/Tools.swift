@@ -50,7 +50,7 @@ enum Tools {
                  description: "音楽（ミュージック.app）の再生操作。例:「音楽かけて」→play、「止めて」→pause、「次の曲」「スキップ」→next、「前の曲」→previous",
                  properties: ["action": ["type": "string", "enum": ["play", "pause", "next", "previous"]]]),
         ToolSpec(name: "search_web",
-                 description: "インターネットで検索し、上位の結果（タイトル・URL・抜粋）と要約を返す。最新の情報、ニュース、店・イベント・人物など、知識だけでは確かでないことを調べるときに使う。必要なら続けて read_webpage で本文を読む",
+                 description: "インターネットで検索し、上位の結果（タイトル・URL・抜粋。上の数件はページの本文も）を返す。最新の情報、ニュース、店・イベント・人物など、知識だけでは確かでないことを調べるときに使う。必要なら続けて read_webpage で本文を読む",
                  properties: ["query": ["type": "string"]]),
         ToolSpec(name: "read_webpage", description: "指定した URL の Web ページの本文を読む（最大8000文字）",
                  properties: ["url": ["type": "string"]]),

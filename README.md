@@ -15,7 +15,7 @@ Mac に常駐する、ローカル音声対話 AI アシスタント。自分で
 
 ## Mac アプリ版「AIエージェント」
 
-中央の幾何学的なコアが、待機・聞き取り・思考・発話に合わせて回転・脈動します。会話は新しいものほど上に現れ、古い発言は下へ押し出されながら、あなたの発言は左へ、AI の発言は右へ流れて消えていきます。
+中央の幾何学的なコアが、待機・聞き取り・思考・発話に合わせて回転・脈動します。会話は新しいものほど上に現れ、古い発言は下へ押し出されながら、あなたの発言は左へ、AI の発言は右へ流れて消えていきます。右側の白いパネルには、今の会話がすべて吹き出しで残ります（下のボタンで出し入れできます）。
 
 ### 使い始めるのに必要なこと
 
@@ -40,7 +40,7 @@ cd mac
 
 | 使いたい機能 | 必要なもの |
 |---|---|
-| Web 検索（ローカル・GPT・Gemini 使用時） | [Tavily](https://app.tavily.com) の API キー（月1,000回まで無料、クレジットカード不要）→ 設定 → AI |
+| Web 検索（ローカル・GPT・Gemini 使用時） | [RustXNG](https://github.com/sahenjp/RustXNG) を入れる（無料・回数の上限なし。下の「Web 検索を入れる」）。または [Tavily](https://app.tavily.com) の API キー（月1,000回まで無料）→ 設定 → AI |
 | Claude を使う | [Anthropic Console](https://console.anthropic.com/settings/keys) の API キー（従量課金）→ 設定 → AI。Web 検索も使うなら、Console の設定で Web 検索を有効にする |
 | GPT を使う | [OpenAI](https://platform.openai.com/api-keys) の API キー（従量課金）→ 設定 → AI |
 | Gemini を使う | [Google AI Studio](https://aistudio.google.com/apikey) の API キー（無料枠あり）→ 設定 → AI |
@@ -56,6 +56,19 @@ cd mac
 
 > Claude Pro / ChatGPT Plus などの月額プランでは API は使えません。API は別契約の従量課金です。
 
+### Web 検索を入れる（RustXNG）
+
+[RustXNG](https://github.com/sahenjp/RustXNG) は、自分の Mac で動かす検索エンジンです。API キーは要りません。`~/.local/bin/rustxng` に置いておくと、アプリが起動時に `127.0.0.1:8888`（この Mac の中だけ）で動かします。
+
+```bash
+mkdir -p ~/.local/bin && cd ~/.local/bin
+gh release download -R sahenjp/RustXNG -p 'rustxng-*-aarch64-apple-darwin*'
+shasum -a 256 -c rustxng-*-aarch64-apple-darwin.sha256   # OK と出ることを確かめる
+mv rustxng-*-aarch64-apple-darwin rustxng && chmod +x rustxng && rm rustxng-*.sha256
+```
+
+検索した言葉は DuckDuckGo などの検索サイトに送られます（Google には対応していません）。
+
 ### 機能
 
 - 初回起動時に、まずエージェントの性別（男性・女性で声と話し方が変わる）を選び、名前（必須）と呼びかけの言葉（任意、空欄なら名前＋「応えて」）を決めます。名前の初期値は男性なら「サスケ」（猿飛佐助）、女性なら「トモエ」（巴御前）で、自由に変更できます。あなたの呼ばれ方＋敬称（初期値「あなた」、敬称なし）もここで決めます
@@ -64,7 +77,7 @@ cd mac
 - 呼びかけたあとは、しばらく（既定3分。設定で変更可）名前を呼ばずに話し続けられます。残り時間は画面に出ます
 - AI はローカル (Ollama) / Claude / GPT / Gemini を設定画面か音声で切り替え。API キーはキーチェーンに保存
 - **MCP（Model Context Protocol）対応**: MCP サーバーのツールを、どの AI からでも使えます（下記）
-- **Web 検索**:「〇〇を調べて」でインターネットを検索し、ページも読んで答えます。ローカル・GPT・Gemini では [Tavily](https://tavily.com)（月1,000回まで無料、設定 → AI で API キーを登録）、Claude では Claude 内蔵の Web 検索（Anthropic Console で Web 検索を有効にしておく必要あり）を使います
+- **Web 検索**:「〇〇を調べて」でインターネットを検索し、ページも読んで答えます。ローカル・GPT・Gemini では、この Mac で動かす [RustXNG](https://github.com/sahenjp/RustXNG)（無料・上限なし。上位のページ本文も一緒に取ってくる）を優先し、無ければ [Tavily](https://tavily.com)（月1,000回まで無料、設定 → AI で API キーを登録）、Claude では Claude 内蔵の Web 検索（Anthropic Console で Web 検索を有効にしておく必要あり）を使います
 - **カメラ**:「これ何？」「これ読んで」「QR コード読んで」で1枚撮って答えます。写っている文字と QR・バーコードは Mac の中で読み取り、物の見た目は画像を読めるモデル（既定の qwen3-vl や Claude など）が説明します。撮った写真は画面に出るので、何を見たのかを確かめられます。画面下のボタンやドラッグ＆ドロップで、手元の画像を見せることもできます
 - **同時通訳**: 地球のボタン（または「通訳して」）で、日本語と相手の言語を同時に聞き取り、もう一方の言語で読み上げます。相手の言語は設定で選べます（英語・スペイン語・中国語・韓国語など）
 - **字幕**: 吹き出しのボタン（または「字幕出して」）で、会議や動画など Mac で鳴っている音声を日本語字幕にして画面の前面に出します（クリックはすり抜けます）
@@ -245,6 +258,7 @@ launchd から起動したプロセスにはマイクの許可ダイアログが
 | サービス | 用途 | 条件 |
 |---|---|---|
 | [気象庁](https://www.jma.go.jp/) | 天気予報 | [政府標準利用規約](https://www.jma.go.jp/jma/kishou/info/coment.html)に基づき出典を明記して利用 |
+| [RustXNG](https://github.com/sahenjp/RustXNG) | Web 検索（任意。アプリには含めず、別のプログラムとして呼び出す） | AGPL-3.0-or-later |
 | [Tavily](https://tavily.com) | Web 検索 | 利用者自身の API キーで利用 |
 
 ## 作者
