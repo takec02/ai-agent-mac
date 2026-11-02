@@ -12,7 +12,7 @@ final class Camera {
     /// 直前に撮った写真（画面の確認用）
     private(set) var lastPhoto: NSImage?
     private(set) var lastPhotoAt: Date?
-    /// 画面に出すときの見出し（「カメラで見たもの」「作った画像」）
+    /// 画面に出すときの見出し（「カメラで見たもの」「渡された画像」「作った画像」）
     private(set) var lastPhotoLabel = "カメラで見たもの"
     /// 直前に読み取った内容（「これ、予定に入れて」のように後から指されたときに使う）
     private(set) var lastReading: String?
@@ -56,6 +56,15 @@ final class Camera {
         hasAttachment = false
     }
 
+    /// 作った絵を、カメラの写真と同じ場所に出す
+    func show(image: NSImage, label: String) {
+        lastPhoto = image
+        lastPhotoAt = Date()
+        lastPhotoLabel = label
+        lastReading = nil
+        hasAttachment = false
+    }
+
     /// ユーザーから渡された画像が、まだ AI に見せられていないか
     private(set) var hasAttachment = false
 
@@ -82,15 +91,6 @@ final class Camera {
     }
 
     func attachmentUsed() { hasAttachment = false }
-
-    /// 作った画像などを、カメラの写真と同じ場所に出す
-    func show(image: NSImage, label: String) {
-        lastPhoto = image
-        lastPhotoAt = Date()
-        lastPhotoLabel = label
-        lastReading = nil
-        hasAttachment = false
-    }
 
     /// 読み取った内容を覚えておく（10分以内なら「これ」で参照できる）
     func note(reading: String) { lastReading = reading }

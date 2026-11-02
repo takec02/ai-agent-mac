@@ -92,9 +92,6 @@ final class AppSettings {
     /// メイン画面の右に、会話の履歴を出す
     var showChatPanel: Bool { didSet { d.set(showChatPanel, forKey: "showChatPanel") } }
 
-    /// 絵を作ってもらうサーバー（社内の Mac など）の URL
-    var imageServer: String { didSet { d.set(imageServer, forKey: "imageServer") } }
-
     /// 通訳するときの相手の言語（音声認識の識別子。既定は英語）
     var interpreterLanguage: String { didSet { d.set(interpreterLanguage, forKey: "interpreterLanguage") } }
     /// 翻訳を AI にさせる（オフなら macOS 内蔵の翻訳。内蔵が使えないときは自動で AI になる）
@@ -147,7 +144,6 @@ final class AppSettings {
         conflictCalendars = d.string(forKey: "conflictCalendars") ?? ""
         stopByVoice = d.object(forKey: "stopByVoice") as? Bool ?? true
         showChatPanel = d.object(forKey: "showChatPanel") as? Bool ?? true
-        imageServer = d.string(forKey: "imageServer") ?? ""
         interpreterLanguage = d.string(forKey: "interpreterLanguage") ?? "en-US"
         interpreterUseAI = d.object(forKey: "interpreterUseAI") as? Bool ?? false
         interpreterSpeak = d.object(forKey: "interpreterSpeak") as? Bool ?? true

@@ -114,13 +114,6 @@ private struct AISettings: View {
                 Text("会話中に「クロードに切り替えて」のように話しても変更できます。")
                     .font(.caption).foregroundStyle(.secondary)
             }
-            Section("画像生成") {
-                TextField("絵を作ってもらう Mac", text: $s.imageServer,
-                          prompt: Text("例: http://192.168.100.200:8770"))
-                APIKeyField(account: "imageServer", placeholder: "合言葉（サーバー側で設定したとき）", link: "")
-                Text("「〇〇の絵を描いて」と頼むと、ここに書いた Mac で絵を作り、できた画像を受け取って `書類 > AIエージェント > 画像` に保存します。空欄のときは絵を作れません。")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
             Section("ローカル (Ollama) — 無料") {
                 TextField("モデル", text: $s.ollamaModel)
                 Picker("一度に扱える量", selection: $s.ollamaContext) {

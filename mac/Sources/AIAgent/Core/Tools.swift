@@ -85,8 +85,9 @@ enum Tools {
         ToolSpec(name: "remove_mcp_server", description: "登録した MCP サーバーを外す。name は登録名。外す前に確認する",
                  properties: ["name": ["type": "string"]]),
         ToolSpec(name: "generate_image",
-                 description: "頼まれた絵を作る。「〇〇の絵を描いて」「画像を作って」と言われたら使う。prompt は作ってほしい内容を具体的に（例: 夜空を見上げる青年、アニメ調）",
-                 properties: ["prompt": ["type": "string"]]),
+                 description: "頼まれた絵を、この Mac の中で作る。「〇〇の絵を描いて」「画像を作って」と言われたら使う。prompt は作ってほしい内容を、英語の簡単な単語で短く書く（例: a young man looking up at the night sky）。style は illustration（既定）・animation（アニメ調）・sketch（線画）",
+                 properties: ["prompt": ["type": "string"],
+                              "style": ["type": "string", "enum": ["illustration", "animation", "sketch"], "optional": true]]),
         ToolSpec(name: "find_contact",
                  description: "Mac の連絡先から人を探して、電話番号・メール・誕生日・会社を返す。「〇〇さんの電話番号は？」「〇〇さんのメアド教えて」と聞かれたら使う。query は名前や会社名の一部",
                  properties: ["query": ["type": "string"]]),
@@ -291,7 +292,8 @@ enum Tools {
             try await MCPManager.shared.removeServer(name)
             return "「\(name)」の登録を外しました"
         case "generate_image":
-            let saved = try await ImageMaker.make(prompt: args["prompt"] as! String)
+            let style = (args["style"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? "illustration"
+            let saved = try await ImageMaker.make(prompt: args["prompt"] as! String, style: style)
             return "絵ができました（画面に出しています）。保存先: 書類 > AIエージェント > 画像 > \(saved.lastPathComponent)"
         case "find_contact":
             return try await ContactsBook.find(args["query"] as! String)
