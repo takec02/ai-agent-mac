@@ -36,6 +36,7 @@ struct ConversationEntry: Identifiable {
     let id = UUID()
     let role: String  // "user" | "assistant" | "system"
     var text: String
+    let date = Date()
 }
 
 /// マイク → 呼びかけ検出 → AI → 読み上げ の流れを制御する。

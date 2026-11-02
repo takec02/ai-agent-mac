@@ -253,25 +253,14 @@ struct HUDView: View {
     var compact = false
 
     var body: some View {
-        let s = agent.settings
-        let tint = agent.state.tint
-        ZStack {
-            HUDBackground(tint: tint)
-            VStack(spacing: 0) {
-                header(tint: tint)
-                liveLine(tint: tint)
-                    .frame(height: 22)
-                    .padding(.horizontal, 20)
-                CoreView(state: agent.state, level: agent.level)
-                    .frame(width: compact ? 170 : 250, height: compact ? 170 : 250)
-                    .frame(maxWidth: .infinity)
-                    .overlay(alignment: .bottomTrailing) { cameraPhoto(tint: tint).padding(.trailing, 16) }
-                    .padding(.vertical, compact ? 4 : 10)
-                FlowingLog(entries: agent.entries, name: s.agentName, tint: tint, maxItems: compact ? 5 : 7)
-                    .frame(maxHeight: .infinity)
-                if let q = agent.pendingConfirmation { confirmBar(q, tint: tint) }
-                if showInput { inputField(tint: tint) }
-                controls(tint: tint)
+        HStack(spacing: 0) {
+            hud
+                .frame(minWidth: 400)
+            // メインウィンドウでは、右に会話の履歴を出す（メニューバーのパネルは狭いので出さない）
+            if !compact && agent.settings.showChatPanel {
+                ChatPanel(entries: agent.entries, name: agent.settings.agentName)
+                    .frame(width: 340)
+                    .transition(.move(edge: .trailing))
             }
         }
         .preferredColorScheme(.dark)
@@ -293,6 +282,30 @@ struct HUDView: View {
                 Task { @MainActor in agent.attachImage(url) }
             }
             return true
+        }
+    }
+
+    private var hud: some View {
+        let s = agent.settings
+        let tint = agent.state.tint
+        return ZStack {
+            HUDBackground(tint: tint)
+            VStack(spacing: 0) {
+                header(tint: tint)
+                liveLine(tint: tint)
+                    .frame(height: 22)
+                    .padding(.horizontal, 20)
+                CoreView(state: agent.state, level: agent.level)
+                    .frame(width: compact ? 170 : 250, height: compact ? 170 : 250)
+                    .frame(maxWidth: .infinity)
+                    .overlay(alignment: .bottomTrailing) { cameraPhoto(tint: tint).padding(.trailing, 16) }
+                    .padding(.vertical, compact ? 4 : 10)
+                FlowingLog(entries: agent.entries, name: s.agentName, tint: tint, maxItems: compact ? 5 : 7)
+                    .frame(maxHeight: .infinity)
+                if let q = agent.pendingConfirmation { confirmBar(q, tint: tint) }
+                if showInput { inputField(tint: tint) }
+                controls(tint: tint)
+            }
         }
     }
 
@@ -519,6 +532,13 @@ struct HUDView: View {
             }
             HUDButton(symbol: "photo", tint: tint, help: "画像を渡して見てもらう", onHover: { hoveredLabel = $0 }) { pickImage() }
             HUDButton(symbol: "trash", tint: tint, help: "会話を消去して、呼びかけ待ちに戻る", onHover: { hoveredLabel = $0 }) { agent.clearConversation() }
+            if !compact {
+                HUDButton(symbol: "sidebar.right", tint: tint,
+                          help: s.showChatPanel ? "会話の履歴を隠す" : "会話の履歴を右に出す",
+                          active: s.showChatPanel, onHover: { hoveredLabel = $0 }) {
+                    withAnimation(.easeOut(duration: 0.2)) { s.showChatPanel.toggle() }
+                }
+            }
             HUDButton(symbol: "gearshape", tint: tint, help: "設定", onHover: { hoveredLabel = $0 }) {
                 NSApp.activate()
                 openSettings()

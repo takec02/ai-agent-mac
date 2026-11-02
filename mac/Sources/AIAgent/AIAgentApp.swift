@@ -28,7 +28,7 @@ struct AIAgentApp: App {
                 .containerBackground(Color(red: 0.02, green: 0.03, blue: 0.05), for: .window)
         }
         .windowStyle(.hiddenTitleBar)
-        .defaultSize(width: 460, height: 720)
+        .defaultSize(width: 800, height: 720)
         .defaultLaunchBehavior(.suppressed)
 
         Window("資料", id: "library") {
