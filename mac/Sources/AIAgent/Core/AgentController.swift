@@ -87,6 +87,8 @@ final class AgentController {
     /// true の間は呼びかけなしで命令として受け付ける（呼びかけ直後・応答直後）
     private var acceptingCommand = false
     private var skipNextFollowup = false
+    /// 応答のあとの「会話中」か（名前だけ呼ばれて続きを待っている間は false）
+    private var inFollowup = false
     private var timeoutTask: Task<Void, Never>?
     private var chimedForCurrentUtterance = false
 
@@ -212,7 +214,9 @@ final class AgentController {
         state = .speaking
         Task {
             await speakAndWait(text)
-            openFollowup()  // 知らせたあとは、呼びかけなしで返事できるようにする
+            // 自分から話しかけたあとは、呼びかけ待ちに戻す。
+            // 会話中にすると、周りの話し声を自分への返事と取り違えて答え続けてしまった
+            setIdle()
         }
     }
 
@@ -413,6 +417,14 @@ final class AgentController {
                 scheduleTimeout(max(settings.followupSeconds, 6))  // 話している間は待ち時間を延長（最後に話した時点から数え直す）
                 return
             }
+            // 動画や音楽が鳴っている間の会話中は、名前を呼ばれたときだけ答える（スピーカーの声を拾うので）
+            if inFollowup, OtherAudio.isPlaying(),
+               WakeMatcher(words: settings.wakeWords, style: .nameOnly, callWords: [], prefixWords: [])
+                   .extractCommand(from: trimmed) == nil {
+                Log.write("followup ignored: other audio playing")
+                setIdle()
+                return
+            }
             let command = matcher.extractCommand(from: trimmed) ?? trimmed
             if command.count >= 2 { handle(command) }
             return
@@ -436,6 +448,7 @@ final class AgentController {
         } else {
             // 名前だけ呼ばれた → 続けて命令を待つ
             acceptingCommand = true
+            inFollowup = false
             scheduleTimeout(6)
         }
     }
@@ -454,6 +467,7 @@ final class AgentController {
         timeoutTask?.cancel()
         conversationUntil = nil
         acceptingCommand = false
+        inFollowup = false
         chimedForCurrentUtterance = false
         liveText = ""
         listener.muted = userPaused
@@ -598,11 +612,18 @@ final class AgentController {
             setIdle()
             return
         }
+        // 動画や音楽が鳴っているときは会話中にしない（スピーカーの声に答えてしまうので、名前を呼ばれるのを待つ）
+        if OtherAudio.isPlaying() {
+            Log.write("followup skipped: other audio playing")
+            setIdle()
+            return
+        }
         // 読み上げの残響を拾わないよう少し待ってからマイクを戻す
         Task {
             try? await Task.sleep(for: .milliseconds(300))
             listener.muted = false
             acceptingCommand = true
+            inFollowup = true
             state = .listening
             scheduleTimeout(settings.followupSeconds)
         }
