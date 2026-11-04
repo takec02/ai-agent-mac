@@ -19,6 +19,13 @@ struct ScheduledTask: Codable, Identifiable, Equatable {
     var speak = true
     var notify = true
     var lastRun: Date?
+    /// 最近知らせたこと（同じことを何度も知らせないために覚えておく）
+    var reports: [Report]? = []
+
+    struct Report: Codable, Equatable {
+        var text: String
+        var at: Date
+    }
 
     var scheduleLabel: String {
         if let m = everyMinutes {
@@ -137,11 +144,20 @@ final class Scheduler {
         update(updated)
         Log.write("watch run: \(rule.name)")
 
+        // 半日以内に知らせたことは、もう一度は知らせない
+        let recent = (rule.reports ?? []).filter { Date().timeIntervalSince($0.at) < 12 * 3600 }
+        let clock = DateFormatter()
+        clock.dateFormat = "H:mm"
+        let already = recent.isEmpty ? "" : """
+
+        すでに知らせたこと（これと同じ内容は知らせず「なし」と返してください。新しいことだけを伝えます）:
+        \(recent.map { "- \(clock.string(from: $0.at)): \($0.text)" }.joined(separator: "\n"))
+        """
         let instruction = """
-        これは利用者に頼まれていない、決まった時刻の自動実行です。
+        これは利用者に頼まれていない、決まった時刻の自動実行です。今は \(clock.string(from: Date())) です。
         次のことを確かめてください: \(rule.prompt)
         知らせる必要がなければ、説明や前置きを付けず「なし」の一語だけを返してください（この一語は読み上げられません）。
-        知らせることがあるときは、話し言葉で簡潔に伝えてください。
+        知らせることがあるときは、話し言葉で簡潔に伝えてください。\(already)
         """
         let text = await agent.askQuietly(instruction)
         let answer = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -149,7 +165,33 @@ final class Scheduler {
             Log.write("watch: nothing to report (\(rule.name))")
             return
         }
+        // AI が同じことをもう一度言ってきたら、読み上げない
+        if recent.contains(where: { Self.similar($0.text, answer) }) {
+            Log.write("watch: already reported (\(rule.name))")
+            return
+        }
+        var reported = rules.first { $0.id == rule.id } ?? updated
+        reported.reports = Array((recent + [ScheduledTask.Report(text: answer, at: Date())]).suffix(10))
+        update(reported)
         agent.deliver(answer, from: rule)
+    }
+
+    /// 言い回しが少し違うだけの、ほぼ同じ文か（数字がそろっていて、短いほうの文を2文字ずつ区切った7割以上が、もう一方にもある）
+    static func similar(_ a: String, _ b: String) -> Bool {
+        func pairs(_ s: String) -> Set<String> {
+            let chars = Array(s.filter { !$0.isWhitespace && !$0.isPunctuation && !"「」『』。、・".contains($0) })
+            guard chars.count >= 2 else { return [String(chars)] }
+            return Set((0..<chars.count - 1).map { String(chars[$0...$0 + 1]) })
+        }
+        // 時刻や件数などの数字が違えば、別のこと（13時の会議と15時の会議など）
+        func numbers(_ s: String) -> [String] {
+            s.applyingTransform(.fullwidthToHalfwidth, reverse: false)?
+                .split { !$0.isASCII || !$0.isNumber }.map(String.init) ?? []
+        }
+        guard numbers(a) == numbers(b) else { return false }
+        let x = pairs(a), y = pairs(b)
+        let smaller = min(x.count, y.count)
+        return smaller > 0 && Double(x.intersection(y).count) / Double(smaller) >= 0.7
     }
 
     /// 「なし」「特にありません」など、知らせることが無いという答えか
