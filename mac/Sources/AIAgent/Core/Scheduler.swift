@@ -53,11 +53,16 @@ final class Scheduler {
     private(set) var rules: [ScheduledTask] = []
     private var timer: Timer?
     private var running = false
+    /// Google のログインが切れて止めた時刻。ログインし直すまで、ログインのページを何度も開かないよう止めておく
+    private(set) var pausedForSignIn: Date? {
+        didSet { UserDefaults.standard.set(pausedForSignIn, forKey: "scheduledPausedForSignIn") }
+    }
     private unowned let agent: AgentController
 
     init(agent: AgentController) {
         self.agent = agent
         rules = Self.load()
+        pausedForSignIn = UserDefaults.standard.object(forKey: "scheduledPausedForSignIn") as? Date
     }
 
     // MARK: 保存
@@ -117,6 +122,11 @@ final class Scheduler {
     }
 
     private func tick() {
+        if let paused = pausedForSignIn {
+            guard Self.signedIn(since: paused) else { return }
+            Log.write("watch: resumed after sign-in")
+            pausedForSignIn = nil
+        }
         guard !running, let rule = rules.first(where: { isDue($0, now: Date()) }) else { return }
         // 話している最中や会議の記録中は邪魔をしない。次の確認のときにやり直す
         guard agent.state == .idle, !agent.meeting.isRecording, agent.pendingConfirmation == nil else { return }
@@ -171,8 +181,9 @@ final class Scheduler {
         // Google などのログインが切れていると、AI が「認証ページが開かれました…」のような話を返してくる。
         // 頼んだことの答えではないので、何が起きたかと、やることだけを短く伝える
         if answer.range(of: "認証|ログイン|authoriz|authenticat", options: [.regularExpression, .caseInsensitive]) != nil {
-            Log.write("watch: needs sign-in (\(rule.name))")
-            answer = "Google のログインが切れているため、確認できませんでした。ブラウザに開いたページからログインし直してください。"
+            Log.write("watch: needs sign-in, paused (\(rule.name))")
+            pausedForSignIn = Date()
+            answer = "Google のログインが切れたため、定期実行を止めました。ブラウザに開いたページからログインし直すと、自動で再開します。"
         }
         guard !answer.isEmpty, !Self.isNothing(answer) else {
             Log.write("watch: nothing to report (\(rule.name))")
@@ -187,6 +198,17 @@ final class Scheduler {
         reported.reports = Array((recent + [ScheduledTask.Report(text: answer, at: Date())]).suffix(10))
         update(reported)
         agent.deliver(answer, from: rule)
+    }
+
+    /// 止めた時刻より後に、Google のログイン情報が書き直されたか（ログインし直した）
+    static func signedIn(since date: Date) -> Bool {
+        let dir = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".google_workspace_mcp/credentials")
+        let files = (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.contentModificationDateKey])) ?? []
+        return files.contains { url in
+            guard url.pathExtension == "json", url.lastPathComponent != "oauth_states.json",
+                  let modified = try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate else { return false }
+            return modified > date
+        }
     }
 
     /// 言い回しが少し違うだけの、ほぼ同じ文か（数字がそろっていて、短いほうの文を2文字ずつ区切った7割以上が、もう一方にもある）

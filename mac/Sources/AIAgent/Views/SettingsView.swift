@@ -350,6 +350,11 @@ private struct ScheduleSettings: View {
         @Bindable var s = agent.settings
         Form {
             Section("定期実行") {
+                if agent.scheduler.pausedForSignIn != nil {
+                    Label("Google のログインが切れたため、止めています。ログインし直すと自動で再開します（\(agent.settings.agentName)に予定やメールを頼むと、ログインのページが開きます）",
+                          systemImage: "pause.circle")
+                        .foregroundStyle(.orange)
+                }
                 if agent.scheduler.rules.isEmpty {
                     Text("まだ何もありません。「追加」で作れます。").foregroundStyle(.secondary)
                 }
