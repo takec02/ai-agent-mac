@@ -374,7 +374,7 @@ private struct ScheduleSettings: View {
                     }
                 }
                 Button("追加") { editing = agent.scheduler.addNew() }
-                Text("決めた時刻や間隔で、頼んだことを\(agent.settings.agentName)が自分で実行します。知らせることが無ければ黙ります。話している最中や会議の記録中は行いません。")
+                Text("決めた時刻や間隔で、頼んだことを\(agent.settings.agentName)が自分で実行します。知らせることは画面と通知に出します（声は出しません）。知らせることが無ければ何もしません。話している最中や会議の記録中は行いません。")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("静かな時間") {
@@ -382,7 +382,7 @@ private struct ScheduleSettings: View {
                     Picker("開始", selection: $s.quietFromHour) { ForEach(0..<24) { Text("\($0)時").tag($0) } }
                     Picker("終了", selection: $s.quietToHour) { ForEach(0..<24) { Text("\($0)時").tag($0) } }
                 }
-                Text("この時間帯は声を出さず、通知だけにします。開始と終了を同じにすると、いつでも声を出します。")
+                Text("「声でも知らせる」をオンにした定期実行も、この時間帯は声を出さず、通知だけにします。開始と終了を同じにすると、いつでも声を出します。")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
@@ -445,7 +445,7 @@ private struct ScheduledTaskSheet: View {
                     Text("例: 未読のメールを確認して、すぐ返事が要るものだけを挙げて。無ければ、何も言わず静かにしている。")
                         .font(.caption).foregroundStyle(.secondary)
                 }
-                Toggle("声で知らせる", isOn: $rule.speak)
+                Toggle("声でも知らせる（オフなら画面と通知だけ）", isOn: $rule.speak)
                 Toggle("通知を出す", isOn: $rule.notify)
             }
             .formStyle(.grouped)

@@ -16,7 +16,8 @@ struct ScheduledTask: Codable, Identifiable, Equatable {
     var dayOfMonth: Int?
     /// AI にやってもらうこと
     var prompt = ""
-    var speak = true
+    /// 声でも知らせるか（既定は画面と通知だけ。お知らせのたびに話しかけられるとうるさいため）
+    var speak = false
     var notify = true
     var lastRun: Date?
     /// 最近知らせたこと（同じことを何度も知らせないために覚えておく）
@@ -66,12 +67,18 @@ final class Scheduler {
     private static func load() -> [ScheduledTask] {
         guard let data = UserDefaults.standard.data(forKey: key),
               let saved = try? JSONDecoder().decode([ScheduledTask].self, from: data) else { return ScheduledTask.samples }
+        // 以前は声で知らせるのが既定だった。一度だけ、全部を画面と通知だけに切り替える
+        let silenceOnce = !UserDefaults.standard.bool(forKey: "scheduledTextOnly")
+        UserDefaults.standard.set(true, forKey: "scheduledTextOnly")
         // 以前の言い回し（「なし」とだけ答える）を、今の言い方に直す
-        return saved.map { rule in
+        let rules = saved.map { rule in
             var r = rule
             r.prompt = r.prompt.replacingOccurrences(of: "「なし」とだけ答える", with: "何も言わず静かにしている")
+            if silenceOnce { r.speak = false }
             return r
         }
+        if silenceOnce, let data = try? JSONEncoder().encode(rules) { UserDefaults.standard.set(data, forKey: key) }
+        return rules
     }
 
     private func save() {
@@ -160,7 +167,13 @@ final class Scheduler {
         知らせることがあるときは、話し言葉で簡潔に伝えてください。\(already)
         """
         let text = await agent.askQuietly(instruction)
-        let answer = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        var answer = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Google などのログインが切れていると、AI が「認証ページが開かれました…」のような話を返してくる。
+        // 頼んだことの答えではないので、何が起きたかと、やることだけを短く伝える
+        if answer.range(of: "認証|ログイン|authoriz|authenticat", options: [.regularExpression, .caseInsensitive]) != nil {
+            Log.write("watch: needs sign-in (\(rule.name))")
+            answer = "Google のログインが切れているため、確認できませんでした。ブラウザに開いたページからログインし直してください。"
+        }
         guard !answer.isEmpty, !Self.isNothing(answer) else {
             Log.write("watch: nothing to report (\(rule.name))")
             return
