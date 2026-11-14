@@ -512,6 +512,9 @@ struct HUDView: View {
                       help: agent.meeting.isRecording ? "会議の記録を終了して要約" : "会議を記録", active: agent.meeting.isRecording, onHover: { hoveredLabel = $0 }) {
                 agent.toggleMeeting()
             }
+            if agent.meeting.isRecording || !agent.lastMeetingTranscript.isEmpty {
+                proposalButton(tint: tint)
+            }
             HUDButton(symbol: "books.vertical", tint: tint, help: "資料を登録する（その内容について聞けます）", onHover: { hoveredLabel = $0 }) {
                 NSApp.activate()
                 openWindow(id: "library")
@@ -548,6 +551,39 @@ struct HUDView: View {
             }
         }
         .padding(.vertical, 12)
+    }
+
+    /// 提案書を作るボタン。提案できそうな話が出ると光る
+    private func proposalButton(tint: Color) -> some View {
+        let maker = ProposalMaker.shared
+        let glow = maker.suggested && !maker.making
+        let color: Color = glow ? .yellow : tint
+        let help = maker.making ? "提案書を作っています（\(maker.progress)）"
+            : glow ? "提案できそうです（\(maker.reason)）。押して提案書を作る"
+            : "ここまでの会議の話から提案書を作る"
+        return Menu {
+            ForEach(ProposalFormat.allCases) { format in
+                Button(format.label) { agent.makeProposal(format: format) }
+            }
+        } label: {
+            Image(systemName: maker.making ? "hourglass" : "doc.badge.plus")
+                .font(.system(size: 13))
+                .foregroundStyle(glow ? Color.black : color.opacity(0.85))
+                .frame(width: 30, height: 30)
+                .background(Circle().fill(glow ? color : .clear))
+                .overlay(Circle().stroke(color.opacity(0.5), lineWidth: 0.8))
+                .shadow(color: glow ? .yellow.opacity(0.9) : .clear, radius: 8)
+                .phaseAnimator([false, true], trigger: glow) { view, phase in
+                    view.scaleEffect(glow && phase ? 1.12 : 1)
+                } animation: { _ in .easeInOut(duration: 0.6).repeatCount(glow ? 6 : 1, autoreverses: true) }
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .disabled(maker.making)
+        .help(help)
+        .onHover { inside in hoveredLabel = inside ? help : nil }
     }
 
     private func send() {

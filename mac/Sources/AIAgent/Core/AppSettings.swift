@@ -91,6 +91,12 @@ final class AppSettings {
     var stopByVoice: Bool { didSet { d.set(stopByVoice, forKey: "stopByVoice") } }
     /// メイン画面の右に、会話の履歴を出す
     var showChatPanel: Bool { didSet { d.set(showChatPanel, forKey: "showChatPanel") } }
+    /// 自社の情報（提案書を書くときの材料。事業・強み・実績・料金など）
+    var companyProfile: String { didSet { d.set(companyProfile, forKey: "companyProfile") } }
+    /// 提案書を作るときに Web でも調べるか
+    var proposalUseWeb: Bool { didSet { d.set(proposalUseWeb, forKey: "proposalUseWeb") } }
+    /// 提案書の書き方の指示（空なら既定の指示を使う）
+    var proposalPrompt: String { didSet { d.set(proposalPrompt, forKey: "proposalPrompt") } }
 
     /// 通訳するときの相手の言語（音声認識の識別子。既定は英語）
     var interpreterLanguage: String { didSet { d.set(interpreterLanguage, forKey: "interpreterLanguage") } }
@@ -144,6 +150,9 @@ final class AppSettings {
         conflictCalendars = d.string(forKey: "conflictCalendars") ?? ""
         stopByVoice = d.object(forKey: "stopByVoice") as? Bool ?? true
         showChatPanel = d.object(forKey: "showChatPanel") as? Bool ?? true
+        companyProfile = d.string(forKey: "companyProfile") ?? ""
+        proposalUseWeb = d.object(forKey: "proposalUseWeb") as? Bool ?? true
+        proposalPrompt = d.string(forKey: "proposalPrompt") ?? ""
         interpreterLanguage = d.string(forKey: "interpreterLanguage") ?? "en-US"
         interpreterUseAI = d.object(forKey: "interpreterUseAI") as? Bool ?? false
         interpreterSpeak = d.object(forKey: "interpreterSpeak") as? Bool ?? true

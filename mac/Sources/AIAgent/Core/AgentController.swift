@@ -712,6 +712,26 @@ final class AgentController {
 
     // MARK: 会議の記録
 
+    /// 直前の会議の文字起こし（会議のあとでも提案書を作れるように残す）
+    private(set) var lastMeetingTranscript = ""
+
+    /// ここまでの会議の話から提案書を作って開く
+    func makeProposal(format: ProposalFormat) {
+        let transcript = meeting.isRecording ? meeting.transcript : lastMeetingTranscript
+        entries.append(ConversationEntry(role: "system", text: "📄 提案書（\(format.label)）を作っています…"))
+        Task {
+            do {
+                let url = try await ProposalMaker.shared.make(transcript: transcript, format: format)
+                NSWorkspace.shared.open(url)
+                let place = url.isFileURL ? "書類 > AIエージェント > 提案書 > \(url.lastPathComponent)" : url.absoluteString
+                entries.append(ConversationEntry(role: "system", text: "📄 提案書ができました: \(place)"))
+                ChatLog.append(role: "system", name: settings.agentName, text: "提案書を作りました: \(place)")
+            } catch {
+                entries.append(ConversationEntry(role: "system", text: "⚠️ \(error.localizedDescription)"))
+            }
+        }
+    }
+
     func toggleMeeting() {
         meeting.isRecording ? finishMeeting() : startMeeting()
     }
@@ -763,6 +783,7 @@ final class AgentController {
         Task {
             do {
                 try await meeting.start()
+                ProposalMaker.shared.startWatching { [weak self] in self?.meeting.transcript ?? "" }
                 entries.append(ConversationEntry(role: "system", text: "● 会議の記録を始めました"))
                 await speakAndWait("会議の記録を始めます。")
                 setIdle()
@@ -775,6 +796,8 @@ final class AgentController {
     private func finishMeeting() {
         Task {
             let transcript = await meeting.stop()
+            ProposalMaker.shared.stopWatching()
+            lastMeetingTranscript = transcript
             Log.write("meeting stopped: \(transcript.count)文字")
             entries.append(ConversationEntry(role: "system", text: "■ 会議の記録を終了しました"))
             guard transcript.count > 20 else {

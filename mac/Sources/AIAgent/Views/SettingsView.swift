@@ -11,6 +11,7 @@ struct SettingsView: View {
             VoiceSettings().tabItem { Label("声", systemImage: "speaker.wave.2") }
             ScheduleSettings().tabItem { Label("定期実行", systemImage: "clock.badge.checkmark") }
             MemorySettings().tabItem { Label("記憶", systemImage: "brain.head.profile") }
+            ProposalSettings().tabItem { Label("提案書", systemImage: "doc.richtext") }
             InterpreterSettings().tabItem { Label("通訳", systemImage: "globe") }
             CalendarSettings().tabItem { Label("予定", systemImage: "calendar") }
             IntegrationSettings().tabItem { Label("連携", systemImage: "point.3.connected.trianglepath.dotted") }
@@ -482,6 +483,49 @@ private struct ScheduledTaskSheet: View {
 }
 
 // MARK: 記憶とパーソナル指示
+
+private struct ProposalSettings: View {
+    @Environment(AgentController.self) private var agent
+
+    var body: some View {
+        @Bindable var s = agent.settings
+        Form {
+            Section("自社の情報") {
+                TextEditor(text: $s.companyProfile)
+                    .frame(height: 220)
+                    .font(.body)
+                    .overlay(RoundedRectangle(cornerRadius: 5).stroke(.secondary.opacity(0.4)))
+                Text("提案書を書くときの材料にします。会社名・事業内容・強み・実績・料金の目安・よく出す提案などを書いておくと、それに沿った提案になります。ここに無い実績や数字は作らず「要確認」と書かせます。")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Section("書き方の指示") {
+                TextEditor(text: Binding(
+                    get: { s.proposalPrompt.isEmpty ? ProposalMaker.defaultPrompt : s.proposalPrompt },
+                    set: { s.proposalPrompt = $0 == ProposalMaker.defaultPrompt ? "" : $0 }))
+                    .frame(height: 160)
+                    .font(.body)
+                    .overlay(RoundedRectangle(cornerRadius: 5).stroke(.secondary.opacity(0.4)))
+                HStack {
+                    Text("構成・枚数・書き方・言葉づかいなどを、自由に書き換えられます。今日の日付・会議の話・材料・出力の形は、アプリが自動で付けます。")
+                        .font(.caption).foregroundStyle(.secondary)
+                    Spacer()
+                    Button("既定に戻す") { s.proposalPrompt = "" }
+                        .disabled(s.proposalPrompt.isEmpty)
+                }
+            }
+            Section("材料") {
+                Toggle("Web でも調べる（相手の会社や業界のこと）", isOn: $s.proposalUseWeb)
+                Text("本のボタンで登録した資料（会社案内・過去の提案書・料金表など）からも、関係するところを使います。")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Section("使い方") {
+                Text("会議を記録している間、画面の下に「提案書を作る」ボタンが出ます。押して形式（PowerPoint・Google スライド・PDF）を選ぶと、その時点までの話から作ります。提案できそうな話が出ると、ボタンが光ってお知らせします。会議を終えたあとも、直前の会議から作れます。")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+    }
+}
 
 private struct MemorySettings: View {
     @Environment(AgentController.self) private var agent

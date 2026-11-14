@@ -225,6 +225,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             exit(0)
         }
+        // 動作確認用: `AIAgent --proposal-selftest 出力先フォルダ [文字起こしのファイル]` で、提案書を作ってみる。
+        // 文字起こしを渡さなければ、AI を使わずに見本の中身で PowerPoint と PDF の形だけを確かめる
+        if let i = args.firstIndex(of: "--proposal-selftest"), args.count > i + 1 {
+            Task { @MainActor in
+                let dir = URL(fileURLWithPath: args[i + 1])
+                do {
+                    if args.count > i + 2, let talk = try? String(contentsOfFile: args[i + 2], encoding: .utf8) {
+                        let started = Date()
+                        let url = try await ProposalMaker.shared.make(transcript: talk, format: .pptx)
+                        print(String(format: "%.0f秒で作りました: %@", Date().timeIntervalSince(started), url.path))
+                    } else {
+                        let deck = ProposalDeck(title: "問い合わせ対応の効率化のご提案", subtitle: "株式会社サンプル商事 御中　2026年11月", slides: [
+                            .init(heading: "現状と課題", bullets: ["問い合わせが月500件を超え、返信に平均2日かかっている", "担当者ごとに回答の質がばらつく", "夜間・休日の問い合わせに対応できていない"]),
+                            .init(heading: "ご提案の内容", bullets: ["よくある質問への一次回答を AI が下書き", "担当者は確認して送るだけ", "既存のメール環境のまま導入（要確認）"]),
+                            .init(heading: "次のステップ", bullets: ["来週中にお見積りをお送りします", "12月に試験導入（1か月）", "効果を見て本導入をご判断ください"]),
+                        ])
+                        try ProposalRenderer.pptx(deck, to: dir.appendingPathComponent("見本.pptx"))
+                        try ProposalRenderer.pdf(deck, to: dir.appendingPathComponent("見本.pdf"))
+                        print("作りました: \(dir.path)")
+                    }
+                } catch {
+                    print("error: \(error.localizedDescription)")
+                }
+                exit(0)
+            }
+            return
+        }
         // 動作確認用: `AIAgent --contacts-selftest [探す言葉]` で、連絡先の読み取りを試す（登録はしない）
         if let i = args.firstIndex(of: "--contacts-selftest") {
             Task { @MainActor in
